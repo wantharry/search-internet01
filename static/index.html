@@ -88,33 +88,61 @@
       margin-bottom: 20px;
     }
     .input-row { display: flex; gap: 10px; margin-bottom: 20px; }
+    .search-wrap {
+      flex: 1;
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+    .search-icon {
+      position: absolute;
+      left: 16px;
+      color: var(--muted);
+      font-size: 16px;
+      pointer-events: none;
+      transition: color .2s;
+      line-height: 1;
+    }
     #query {
       flex: 1;
-      background: var(--bg);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 11px 16px;
+      width: 100%;
+      background: var(--surface2);
+      border: 1.5px solid var(--border);
+      border-radius: 14px;
+      padding: 15px 18px 15px 44px;
       color: var(--text);
-      font-size: 15px;
+      font-size: 16px;
       outline: none;
-      transition: border-color .15s;
+      transition: border-color .2s, box-shadow .2s, background .2s;
+      box-shadow: 0 2px 8px rgba(0,0,0,.25);
     }
-    #query:focus { border-color: var(--primary); }
-    #query::placeholder { color: var(--muted); }
+    #query:focus {
+      border-color: var(--primary);
+      background: var(--bg);
+      box-shadow: 0 0 0 3px rgba(124,109,250,.18), 0 2px 12px rgba(0,0,0,.3);
+    }
+    .search-wrap:focus-within .search-icon { color: var(--primary); }
+    #query::placeholder { color: var(--muted); font-size: 15px; }
     #search-btn {
-      background: var(--primary);
+      background: linear-gradient(135deg, #7c6dfa 0%, #a78bfa 100%);
       color: #fff;
       border: none;
-      border-radius: var(--radius);
-      padding: 11px 22px;
-      font-size: 14px;
-      font-weight: 600;
+      border-radius: 14px;
+      padding: 15px 28px;
+      font-size: 15px;
+      font-weight: 700;
       cursor: pointer;
       white-space: nowrap;
-      transition: opacity .15s;
+      letter-spacing: .02em;
+      transition: transform .15s, box-shadow .15s, opacity .15s;
+      box-shadow: 0 4px 14px rgba(124,109,250,.4);
     }
-    #search-btn:hover:not(:disabled) { opacity: .88; }
-    #search-btn:disabled { opacity: .45; cursor: not-allowed; }
+    #search-btn:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px rgba(124,109,250,.55);
+    }
+    #search-btn:active:not(:disabled) { transform: translateY(0); }
+    #search-btn:disabled { opacity: .45; cursor: not-allowed; box-shadow: none; }
 
     /* ── Sliders ── */
     .settings { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
@@ -327,8 +355,10 @@
 
       .search-card { padding: 14px; border-radius: 12px; margin-bottom: 14px; }
       .input-row { gap: 8px; margin-bottom: 12px; }
-      #query { font-size: 14px; padding: 10px 13px; }
-      #search-btn { padding: 10px 16px; font-size: 13px; width: 100%; }
+      .input-row { flex-direction: column; }
+      .search-wrap { width: 100%; }
+      #query { font-size: 15px; padding: 14px 16px 14px 42px; }
+      #search-btn { padding: 14px 16px; font-size: 14px; width: 100%; border-radius: 12px; }
 
       .settings { grid-template-columns: 1fr; gap: 12px; margin-top: 4px; }
       .toggle-row {
@@ -367,7 +397,10 @@
   <!-- Search controls -->
   <div class="search-card">
     <div class="input-row">
-      <input id="query" type="text" placeholder="What do you want to research?" autofocus />
+      <div class="search-wrap">
+        <span class="search-icon">&#128269;</span>
+        <input id="query" type="text" placeholder="What do you want to research?" autofocus />
+      </div>
       <button id="search-btn" onclick="startSearch()">Search</button>
     </div>
 
