@@ -26,6 +26,12 @@ if os.path.isdir(static_dir):
     app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
 
+_MATH_HINT = (
+    "When expressing mathematical equations, scientific formulas, or any symbolic "
+    "expressions, use LaTeX notation: inline with $...$ and display blocks with $$...$$. "
+    "For example: the quadratic formula is $x = \\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}$.\n\n"
+)
+
 PROMPTS: dict[str, str] = {
     "ultra_short": (
         'You are a research assistant. Given these search results for "{query}", '
@@ -69,7 +75,7 @@ class SearchRequest(BaseModel):
     concurrency: int = 5
     fetch_content: bool = True
     model: str = DEFAULT_MODEL
-    summary_depth: str = "summary"  # ultra_short | summary | detailed
+    summary_depth: str = "all"  # ultra_short | summary | detailed | all
 
 
 def _ddg_search_sync(query: str, max_results: int) -> list:
@@ -175,28 +181,38 @@ async def stream_search(req: SearchRequest) -> AsyncGenerator[str, None]:
             })
 
     # --- 3. Ollama summarization (streaming) ---
-    depth = req.summary_depth if req.summary_depth in PROMPTS else "summary"
-    depth_label = {"ultra_short": "Ultra Short", "summary": "Summary", "detailed": "Detailed"}[depth]
-    yield evt({"type": "status", "message": f"Generating {depth_label} summary with {req.model}…"})
-    yield evt({"type": "summary_depth", "depth": depth, "label": depth_label})
+    _DEPTH_LABELS = {"ultra_short": "Ultra Short", "summary": "Summary", "detailed": "Detailed"}
+    _MAX_FOR    = {"ultra_short": 10, "summary": 15, "detailed": 20}
+    _LEN_FOR    = {"ultra_short": 300, "summary": 900, "detailed": 1500}
 
-    # More context for detailed, less for ultra_short
-    max_results_for_summary = {"ultra_short": 10, "summary": 15, "detailed": 20}[depth]
-    content_preview_len = {"ultra_short": 300, "summary": 900, "detailed": 1500}[depth]
-
+    depths_to_run = (
+        ["ultra_short", "summary", "detailed"]
+        if req.summary_depth == "all"
+        else [req.summary_depth if req.summary_depth in PROMPTS else "summary"]
+    )
     sorted_results = sorted(processed, key=lambda x: x["index"])
-    context_parts: list[str] = []
-    for r in sorted_results[:max_results_for_summary]:
-        part = f"### {r['title']}\nURL: {r['url']}\nSnippet: {r['snippet']}"
-        if r["content"]:
-            part += f"\nContent preview: {r['content'][:content_preview_len]}"
-        context_parts.append(part)
-    context = "\n\n".join(context_parts)
 
-    prompt = PROMPTS[depth].format(query=req.query, context=context)
+    for i, depth in enumerate(depths_to_run):
+        label = _DEPTH_LABELS[depth]
+        yield evt({
+            "type": "status",
+            "message": f"Generating {label} summary ({i + 1}/{len(depths_to_run)}) with {req.model}…",
+        })
+        yield evt({"type": "summary_start", "depth": depth, "label": label})
 
-    async for chunk in _ollama_stream(req.model, prompt):
-        yield evt({"type": "summary_chunk", "text": chunk})
+        context_parts: list[str] = []
+        for r in sorted_results[:_MAX_FOR[depth]]:
+            part = f"### {r['title']}\nURL: {r['url']}\nSnippet: {r['snippet']}"
+            if r["content"]:
+                part += f"\nContent preview: {r['content'][:_LEN_FOR[depth]]}"
+            context_parts.append(part)
+        context = "\n\n".join(context_parts)
+
+        prompt = _MATH_HINT + PROMPTS[depth].format(query=req.query, context=context)
+        async for chunk in _ollama_stream(req.model, prompt):
+            yield evt({"type": "summary_chunk", "text": chunk, "depth": depth})
+
+        yield evt({"type": "summary_done", "depth": depth})
 
     yield evt({"type": "done", "total": total})
 
