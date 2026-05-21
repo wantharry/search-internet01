@@ -1,0 +1,12 @@
+services:
+  app:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - OLLAMA_HOST=http://host.docker.internal:11434
+      - OLLAMA_MODEL=qwen3:8b
+    # Allows the container to reach Ollama on the host (Linux Docker)
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
