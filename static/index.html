@@ -547,12 +547,12 @@
 <main>
   <!-- Top nav -->
   <div class="top-nav">
-    <button class="nav-tab active" id="nav-search" onclick="switchView('search')">🔍 Search</button>
-    <button class="nav-tab" id="nav-live" onclick="switchView('live')">📡 Live</button>
+    <button class="nav-tab" id="nav-search" onclick="switchView('search')">🔍 Search</button>
+    <button class="nav-tab active" id="nav-live" onclick="switchView('live')">📡 Live</button>
   </div>
 
   <!-- Live section -->
-  <div id="live-section">
+  <div id="live-section" class="show">
     <div class="live-cats">
       <button class="live-cat active" data-cat="world"     onclick="selectCat('world')">🌍 World</button>
       <button class="live-cat"        data-cat="politics"  onclick="selectCat('politics')">🏛️ Politics</button>
@@ -564,7 +564,15 @@
     <div class="live-header">
       <span id="live-status">Select a category to load headlines</span>
       <div style="display:flex;align-items:center;gap:8px">
-        <span id="live-countdown" style="display:none;font-size:11px"></span>
+        <span id="live-countdown" style="font-size:11px;opacity:0.7"></span>
+        <select id="live-interval" onchange="changeInterval()" style="background:#1e293b;color:#94a3b8;border:1px solid #334155;border-radius:6px;padding:3px 6px;font-size:12px;cursor:pointer">
+          <option value="60" selected>1 min</option>
+          <option value="300">5 min</option>
+          <option value="600">10 min</option>
+          <option value="1200">20 min</option>
+          <option value="1800">30 min</option>
+          <option value="3600">1 hr</option>
+        </select>
         <button class="live-refresh-btn" onclick="refreshLive()">↻ Refresh</button>
       </div>
     </div>
@@ -574,7 +582,7 @@
   </div>
 
   <!-- Search section -->
-  <div id="search-section">
+  <div id="search-section" class="hide">
 
   <!-- Search controls -->
   <div class="search-card">
@@ -941,7 +949,7 @@
   /* ── Live feed ── */
   let liveCategory = null;
   let liveCountdownTimer = null;
-  let liveSecondsLeft = 300;
+  let liveSecondsLeft = 60;
 
   function switchView(view) {
     const isLive = view === 'live';
@@ -985,7 +993,9 @@
           <div class="live-ai-summary" id="las-${i}"></div>
         </div>
       `).join('');
-      status.textContent = `${items.length} headlines · auto-refreshes in 5 min`;
+      const ivSecs = getIntervalSecs();
+      const ivLabel = ivSecs < 3600 ? `${ivSecs/60|0} min` : '1 hr';
+      status.textContent = `${items.length} headlines · auto-refresh: ${ivLabel}`;
       startCountdown();
     } catch(e) {
       grid.innerHTML = '<div class="live-loading">⚠️ Failed to load feeds.</div>';
@@ -993,16 +1003,24 @@
     }
   }
 
+  function getIntervalSecs() {
+    const el = document.getElementById('live-interval');
+    return el ? parseInt(el.value) : 60;
+  }
+
+  function changeInterval() {
+    startCountdown();
+  }
+
   function startCountdown() {
     clearInterval(liveCountdownTimer);
-    liveSecondsLeft = 300;
+    liveSecondsLeft = getIntervalSecs();
     const cd = document.getElementById('live-countdown');
-    cd.style.display = 'inline';
     liveCountdownTimer = setInterval(() => {
       liveSecondsLeft--;
       const m = Math.floor(liveSecondsLeft / 60);
       const s = liveSecondsLeft % 60;
-      cd.textContent = `Refresh in ${m}:${String(s).padStart(2,'0')}`;
+      cd.textContent = `↻ ${m}:${String(s).padStart(2,'0')}`;
       if (liveSecondsLeft <= 0) {
         clearInterval(liveCountdownTimer);
         refreshLive();
@@ -1013,6 +1031,12 @@
   function refreshLive() {
     if (liveCategory) loadLive(liveCategory);
   }
+
+  // Live is the default view — auto-load world on startup
+  document.addEventListener('DOMContentLoaded', () => {
+    liveCategory = 'world';
+    loadLive('world');
+  });
 
   async function summarizeLive(idx, btn) {
     const title   = btn.dataset.title;
