@@ -454,6 +454,9 @@
       <button class="sum-tab" data-depth="detailed" onclick="switchTab('detailed')">
         🔬 Detailed <span class="tab-dot" id="dot-detailed"></span>
       </button>
+      <button class="sum-tab" data-depth="raw" onclick="switchTab('raw')">
+        📄 Raw
+      </button>
     </div>
     <div class="md-body" id="summary-content"></div>
   </div>
@@ -482,6 +485,7 @@
   const DEPTHS = ['ultra_short', 'summary', 'detailed'];
   const summaryState = {};
   let activeTab = 'ultra_short';
+  let rawPages = []; // collected raw content from fetched pages
 
   function resetSummaryState() {
     DEPTHS.forEach(d => {
@@ -489,6 +493,7 @@
       const dot = document.getElementById('dot-' + d);
       if (dot) dot.className = 'tab-dot';
     });
+    rawPages = [];
     activeTab = 'ultra_short';
     document.querySelectorAll('.sum-tab').forEach(b =>
       b.classList.toggle('active', b.dataset.depth === 'ultra_short')
@@ -505,7 +510,24 @@
     renderActiveTab();
   }
 
+  function renderRawTab() {
+    const el = document.getElementById('summary-content');
+    if (rawPages.length === 0) {
+      el.innerHTML = '<div class="tab-placeholder">No page content fetched yet…</div>';
+      return;
+    }
+    el.innerHTML = rawPages.map(p =>
+      `<div style="margin-bottom:20px">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:4px;word-break:break-all">
+          <strong>#${p.index + 1}</strong> — <a href="${esc(p.url)}" target="_blank" style="color:var(--primary)">${esc(p.url)}</a>
+        </div>
+        <pre style="white-space:pre-wrap;word-break:break-word;font-size:11.5px;line-height:1.55;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:10px 12px;overflow-x:auto;color:var(--text);margin:0">${esc(p.text || '(no content fetched)')}</pre>
+      </div>`
+    ).join('');
+  }
+
   function renderActiveTab() {
+    if (activeTab === 'raw') { renderRawTab(); return; }
     const state = summaryState[activeTab];
     const el = document.getElementById('summary-content');
     if (!state || state.status === 'waiting') {
@@ -638,6 +660,12 @@
               tickProgress(d);
               header.textContent = `Results (${ev.progress})`;
               addResult(ev.result, header);
+              if (ev.content_text) {
+                rawPages.push({ index: ev.result.index, url: ev.result.url, text: ev.content_text });
+                rawPages.sort((a, b) => a.index - b.index);
+                document.getElementById('summary-card').classList.add('show');
+                if (activeTab === 'raw') renderRawTab();
+              }
               break;
             }
 
