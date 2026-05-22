@@ -924,6 +924,61 @@
     .alert-title { font-size: 14px; }
     header h1 { font-size: 17px; }
   }
+
+  /* ── ✨ Summarize — special feature highlight ── */
+  @keyframes ai-glow-pulse {
+    0%, 100% { box-shadow: 0 0 8px rgba(129,140,248,.45), 0 0 16px rgba(6,182,212,.2); }
+    50%       { box-shadow: 0 0 14px rgba(129,140,248,.7), 0 0 28px rgba(6,182,212,.35); }
+  }
+  @keyframes sparkle-spin {
+    0%   { transform: rotate(0deg) scale(1); }
+    25%  { transform: rotate(-12deg) scale(1.2); }
+    75%  { transform: rotate(12deg) scale(1.2); }
+    100% { transform: rotate(0deg) scale(1); }
+  }
+
+  .live-summarize-btn {
+    font-family: var(--font-body);
+    font-size: 12px;
+    font-weight: 700;
+    padding: 6px 16px;
+    border-radius: 999px;
+    border: 1.5px solid transparent;
+    background: linear-gradient(var(--surface2), var(--surface2)) padding-box,
+                linear-gradient(135deg, #818cf8, #a78bfa, #06b6d4) border-box;
+    color: #c4b5fd;
+    cursor: pointer;
+    letter-spacing: .02em;
+    position: relative;
+    transition: transform .18s ease, box-shadow .18s ease, color .18s, background .18s;
+    animation: ai-glow-pulse 3s ease-in-out infinite;
+  }
+  .live-summarize-btn::before {
+    content: '✨';
+    display: inline-block;
+    margin-right: 5px;
+    transition: transform .3s ease;
+  }
+  .live-summarize-btn:hover:not(:disabled) {
+    transform: translateY(-2px) scale(1.04);
+    background: linear-gradient(135deg, #6366f1, #818cf8, #06b6d4) padding-box,
+                linear-gradient(135deg, #818cf8, #a78bfa, #06b6d4) border-box;
+    color: #fff;
+    box-shadow: 0 4px 18px rgba(129,140,248,.55), 0 2px 8px rgba(6,182,212,.3);
+    animation: none;
+  }
+  .live-summarize-btn:hover:not(:disabled)::before {
+    animation: sparkle-spin .5s ease;
+  }
+  .live-summarize-btn:active:not(:disabled) {
+    transform: translateY(0) scale(.98);
+  }
+  .live-summarize-btn:disabled {
+    opacity: .55;
+    cursor: default;
+    animation: none;
+    filter: grayscale(30%);
+  }
 </style>
 </head>
 <body>
@@ -1436,7 +1491,7 @@
           <div class="live-card-title"><a href="${esc(item.url)}" target="_blank" rel="noopener">${esc(item.title)}</a></div>
           <div class="live-card-meta">${esc(item.published)}</div>
           <div class="live-card-snippet">${esc(item.snippet)}</div>
-          <button class="live-summarize-btn" onclick="summarizeLive(${i},this)" data-title="${esc(item.title)}" data-url="${esc(item.url)}" data-snippet="${esc(item.snippet)}">✨ Summarize</button>
+          <button class="live-summarize-btn" onclick="summarizeLive(${i},this)" data-title="${esc(item.title)}" data-url="${esc(item.url)}" data-snippet="${esc(item.snippet)}">Summarize</button>
           <div class="live-ai-summary" id="las-${i}"></div>
         </div>
       `).join('');
@@ -1522,7 +1577,7 @@
       btn.textContent = '✅ Done';
     } catch(e) {
       box.textContent = 'Error: ' + e.message;
-      btn.textContent = '✨ Summarize';
+      btn.textContent = 'Summarize';
       btn.disabled = false;
     }
   }
@@ -1562,7 +1617,7 @@
         </div>
         <div class="alert-title"><a href="${esc(item.url)}" target="_blank" rel="noopener">${esc(item.title)}</a></div>
         <div class="alert-snippet">${esc(item.snippet || '')}</div>
-        <button class="live-summarize-btn" style="margin-top:10px" onclick="summarizeAlert('${item.id}',this)" data-title="${esc(item.title)}" data-url="${esc(item.url)}" data-snippet="${esc(item.snippet||'')}">✨ Summarize</button>
+        <button class="live-summarize-btn" style="margin-top:10px" onclick="summarizeAlert('${item.id}',this)" data-title="${esc(item.title)}" data-url="${esc(item.url)}" data-snippet="${esc(item.snippet||'')}">Summarize</button>
         <div class="live-ai-summary" id="asum-${item.id}"></div>
       </div>
       <button class="alert-dismiss" onclick="dismissAlert('${item.id}')" title="Dismiss">×</button>
@@ -1607,7 +1662,7 @@
       btn.textContent = '✅ Done';
     } catch(e) {
       box.textContent = 'Error: ' + e.message;
-      btn.textContent = '✨ Summarize';
+      btn.textContent = 'Summarize';
       btn.disabled = false;
     }
   }
