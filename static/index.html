@@ -980,33 +980,31 @@
     filter: grayscale(30%);
   }
 
-  /* ── Theme picker ── */
-  .theme-picker {
-    display: flex;
-    align-items: center;
-    gap: 6px;
+  /* ── Theme picker dropdown ── */
+  .theme-sel {
+    appearance: none;
+    -webkit-appearance: none;
     margin-left: auto;
-  }
-  .theme-dot {
-    width: 20px; height: 20px;
-    border-radius: 50%;
+    background: var(--surface2);
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
     cursor: pointer;
-    border: 2px solid transparent;
-    transition: transform .18s, border-color .18s, box-shadow .18s;
+    font-family: var(--font-body);
+    font-size: 12px;
+    font-weight: 600;
+    padding: 5px 28px 5px 10px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%238899b4' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+    transition: border-color .18s;
     flex-shrink: 0;
   }
-  .theme-dot:hover { transform: scale(1.2); }
-  .theme-dot.active {
-    border-color: #fff;
-    box-shadow: 0 0 10px rgba(255,255,255,.45);
-    transform: scale(1.18);
+  .theme-sel:hover, .theme-sel:focus {
+    border-color: var(--primary);
+    outline: none;
   }
-  .theme-dot[data-theme="cosmos"]  { background: linear-gradient(135deg,#1e1b4b,#818cf8); }
-  .theme-dot[data-theme="stellar"] { background: linear-gradient(135deg,#0d1520,#38bdf8); }
-  .theme-dot[data-theme="ember"]   { background: linear-gradient(135deg,#1c0a04,#f97316); }
-  .theme-dot[data-theme="forest"]  { background: linear-gradient(135deg,#071510,#34d399); }
-  .theme-dot[data-theme="sakura"]  { background: linear-gradient(135deg,#1a0815,#f472b6); }
-  .theme-dot[data-theme="slate"]   { background: linear-gradient(135deg,#1e2433,#94a3b8); }
+  .theme-sel option { background: #111; color: #fff; }
 
   /* ── Live compact control bar ── */
   .live-controls {
@@ -1101,14 +1099,15 @@
   <h1>Pulse</h1>
   <span class="badge">Ollama</span>
   <span class="free-badge">100% Free</span>
-  <div class="theme-picker" title="Switch theme">
-    <div class="theme-dot" data-theme="cosmos"  onclick="applyTheme('cosmos')"  title="Cosmos (indigo)"></div>
-    <div class="theme-dot" data-theme="stellar" onclick="applyTheme('stellar')" title="Stellar (blue)"></div>
-    <div class="theme-dot" data-theme="ember"   onclick="applyTheme('ember')"   title="Ember (orange)"></div>
-    <div class="theme-dot" data-theme="forest"  onclick="applyTheme('forest')"  title="Forest (green)"></div>
-    <div class="theme-dot" data-theme="sakura"  onclick="applyTheme('sakura')"  title="Sakura (pink)"></div>
-    <div class="theme-dot" data-theme="slate"   onclick="applyTheme('slate')"   title="Slate (gray)"></div>
-  </div>
+  <select class="theme-sel" id="theme-select" onchange="applyTheme(this.value)" title="Switch theme">
+    <option value="mono">⬛ Mono</option>
+    <option value="cosmos">🟣 Cosmos</option>
+    <option value="stellar">🔵 Stellar</option>
+    <option value="ember">🟠 Ember</option>
+    <option value="forest">🟢 Forest</option>
+    <option value="sakura">🩷 Sakura</option>
+    <option value="slate">⚪ Slate</option>
+  </select>
 </header>
 
 <main>
@@ -1924,6 +1923,22 @@
 
   // ── Themes ────────────────────────────────────────────────────────────────
   const THEMES = {
+    mono: {
+      '--bg':          '#000000',
+      '--surface':     '#0f0f0f',
+      '--surface2':    '#1a1a1a',
+      '--border':      '#2e2e2e',
+      '--primary':     '#ffffff',
+      '--primary-dim': 'rgba(255,255,255,.12)',
+      '--text':        '#f0f0f0',
+      '--muted':       '#888888',
+      '--teal':        '#cccccc',
+      '--green':       '#aaaaaa',
+      '--red':         '#ff6b6b',
+      'gradient1':     'rgba(255,255,255,.02)',
+      'gradient2':     'rgba(255,255,255,.01)',
+      'header-grad':   'linear-gradient(135deg,#ffffff,#cccccc 50%,#aaaaaa)',
+    },
     cosmos: {
       '--bg':          '#0d1220',
       '--surface':     '#141c30',
@@ -2040,16 +2055,15 @@
     // Update logo glow
     const logo = document.querySelector('.logo');
     if (logo) logo.style.background = `linear-gradient(135deg,${t['--primary']},${t['--teal']})`;
-    // Update active dot
-    document.querySelectorAll('.theme-dot').forEach(d => {
-      d.classList.toggle('active', d.dataset.theme === name);
-    });
+    // Sync dropdown
+    const sel = document.getElementById('theme-select');
+    if (sel) sel.value = name;
     localStorage.setItem('ai-search-theme', name);
   }
 
   // Restore on load
   (function() {
-    const saved = localStorage.getItem('ai-search-theme') || 'stellar';
+    const saved = localStorage.getItem('ai-search-theme') || 'mono';
     applyTheme(saved);
   })();
 </script>
