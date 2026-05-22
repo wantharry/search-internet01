@@ -1562,10 +1562,54 @@
         </div>
         <div class="alert-title"><a href="${esc(item.url)}" target="_blank" rel="noopener">${esc(item.title)}</a></div>
         <div class="alert-snippet">${esc(item.snippet || '')}</div>
+        <button class="live-summarize-btn" style="margin-top:10px" onclick="summarizeAlert('${item.id}',this)" data-title="${esc(item.title)}" data-url="${esc(item.url)}" data-snippet="${esc(item.snippet||'')}">✨ Summarize</button>
+        <div class="live-ai-summary" id="asum-${item.id}"></div>
       </div>
       <button class="alert-dismiss" onclick="dismissAlert('${item.id}')" title="Dismiss">×</button>
     `;
     return div;
+  }
+
+  async function summarizeAlert(id, btn) {
+    const title   = btn.dataset.title;
+    const url     = btn.dataset.url;
+    const snippet = btn.dataset.snippet;
+    btn.disabled = true;
+    btn.textContent = '⏳ Summarizing…';
+    const box = document.getElementById('asum-' + id);
+    box.classList.add('show');
+    box.textContent = '';
+    const modelEl = document.getElementById('model-select');
+    const model = modelEl ? modelEl.value : 'qwen3:8b';
+    try {
+      const resp = await fetch('/live/summarize', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ title, url, snippet, model }),
+      });
+      const reader = resp.body.getReader();
+      const dec = new TextDecoder();
+      let buf = '';
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buf += dec.decode(value, { stream: true });
+        const lines = buf.split('\n');
+        buf = lines.pop() ?? '';
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          try {
+            const ev = JSON.parse(line.slice(6));
+            if (ev.text) box.textContent += ev.text;
+          } catch {}
+        }
+      }
+      btn.textContent = '✅ Done';
+    } catch(e) {
+      box.textContent = 'Error: ' + e.message;
+      btn.textContent = '✨ Summarize';
+      btn.disabled = false;
+    }
   }
 
   function dismissAlert(id) {
