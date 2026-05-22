@@ -1270,17 +1270,7 @@
         <span class="alerts-status" id="alerts-status">Starting up…</span>
       </div>
     </div>
-    <div class="alerts-watching">
-      <span class="alerts-watching-label">Watch:</span>
-      <label class="alerts-watch-item"><input type="checkbox" class="alerts-watch-cb" value="breaking" checked> 🚨 Breaking</label>
-      <label class="alerts-watch-item"><input type="checkbox" class="alerts-watch-cb" value="world" checked> 🌍 World</label>
-      <label class="alerts-watch-item"><input type="checkbox" class="alerts-watch-cb" value="politics"> 🏛️ Politics</label>
-      <label class="alerts-watch-item"><input type="checkbox" class="alerts-watch-cb" value="tech"> 💻 Tech</label>
-      <label class="alerts-watch-item"><input type="checkbox" class="alerts-watch-cb" value="finance"> 📈 Finance</label>
-      <label class="alerts-watch-item"><input type="checkbox" class="alerts-watch-cb" value="health"> 🏥 Health</label>
-      <label class="alerts-watch-item"><input type="checkbox" class="alerts-watch-cb" value="environment"> 🌿 Environment</label>
-      <label class="alerts-watch-item"><input type="checkbox" class="alerts-watch-cb" value="science"> 🔬 Science</label>
-    </div>
+
     <div id="alerts-stack">
       <div id="alerts-empty">⏳ Seeding headlines… New alerts will pop up here.</div>
     </div>
@@ -1934,7 +1924,7 @@
   }
 
   function getWatchedCats() {
-    return Array.from(document.querySelectorAll('.alerts-watch-cb:checked')).map(c => c.value);
+    return ['breaking','world','politics','tech','finance','health','environment','science'];
   }
 
   function setAlertsStatus(msg) {
