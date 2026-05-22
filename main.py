@@ -34,8 +34,8 @@ _MATH_HINT = (
 
 PROMPTS: dict[str, str] = {
     "ultra_short": (
-        'You are a research assistant. Given these search results for "{query}", '
-        "write an ULTRA-SHORT summary:\n"
+        'Using ONLY the search results below about "{query}", write an ULTRA-SHORT summary. '
+        "Do NOT ask clarifying questions. Do NOT say you cannot answer. Just write the summary now.\n"
         "- **TL;DR**: One sentence (max 25 words)\n"
         "- **3 Key Points**: Three bullet points, each max 15 words\n"
         "- **Top Link**: The single most useful URL\n"
@@ -43,7 +43,8 @@ PROMPTS: dict[str, str] = {
         "Search Results:\n{context}"
     ),
     "summary": (
-        'You are a research assistant. Summarize these search results for "{query}":\n\n'
+        'Using ONLY the search results below about "{query}", write a summary. '
+        "Do NOT ask clarifying questions. Do NOT say you cannot answer. Just write the summary now.\n\n"
         "1. **Key Findings**: The most important information discovered\n"
         "2. **Notable Facts**: Key data points, statistics, or details\n"
         "3. **Best Sources**: 2–3 most relevant URLs with brief descriptions\n"
@@ -51,7 +52,8 @@ PROMPTS: dict[str, str] = {
         "Search Results:\n{context}"
     ),
     "detailed": (
-        'You are a research assistant. Write a DETAILED analysis of search results for "{query}":\n\n'
+        'Using ONLY the search results below about "{query}", write a DETAILED analysis. '
+        "Do NOT ask clarifying questions. Do NOT say you cannot answer. Write the full analysis now.\n\n"
         "## Background\n"
         "Provide context and why this topic matters.\n\n"
         "## Key Findings\n"
@@ -234,7 +236,8 @@ async def _ollama_stream(model: str, prompt: str) -> AsyncGenerator[str, None]:
                     "You answer questions on ANY topic — sports, history, science, "
                     "entertainment, politics, people, culture, and more. "
                     "Never refuse a question because it is not about programming. "
-                    "Always use the provided search results to give an accurate, helpful answer."
+                    "NEVER ask the user clarifying questions — always write the requested summary or analysis directly using the provided search results. "
+                    "If search results are provided, use them. Write the answer immediately."
                 ),
             },
             {"role": "user", "content": prompt},
