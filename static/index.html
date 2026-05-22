@@ -1007,6 +1007,58 @@
   .theme-dot[data-theme="forest"]  { background: linear-gradient(135deg,#071510,#34d399); }
   .theme-dot[data-theme="sakura"]  { background: linear-gradient(135deg,#1a0815,#f472b6); }
   .theme-dot[data-theme="slate"]   { background: linear-gradient(135deg,#1e2433,#94a3b8); }
+
+  /* ── Live compact control bar ── */
+  .live-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+  }
+  .live-sel {
+    appearance: none;
+    -webkit-appearance: none;
+    background: var(--surface2);
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    cursor: pointer;
+    font-family: var(--font-body);
+    font-size: 13px;
+    font-weight: 600;
+    padding: 7px 32px 7px 12px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238899b4' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    transition: border-color .18s, box-shadow .18s;
+    min-width: 120px;
+  }
+  .live-sel:hover, .live-sel:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px var(--primary-dim);
+    outline: none;
+  }
+  .live-sel option {
+    background: var(--surface2);
+    color: var(--text);
+  }
+  #live-interval { min-width: 90px; }
+  .live-countdown-txt {
+    font-size: 11px;
+    color: var(--muted);
+    opacity: .8;
+  }
+  .live-status-txt {
+    font-size: 12px;
+    color: var(--muted);
+    margin-left: auto;
+  }
+  @media (max-width: 640px) {
+    .live-controls { gap: 6px; }
+    .live-sel { font-size: 12px; padding: 6px 28px 6px 10px; min-width: 0; flex: 1; }
+    .live-status-txt { display: none; }
+  }
 </style>
 </head>
 <body>
@@ -1036,42 +1088,40 @@
 
   <!-- Live section -->
   <div id="live-section" class="show">
-    <div class="live-cats" id="live-regions">
-      <button class="live-cat live-region active" data-region="world"   onclick="selectRegion('world')">🌍 World</button>
-      <button class="live-cat live-region"        data-region="usa"     onclick="selectRegion('usa')">🇺🇸 USA</button>
-      <button class="live-cat live-region"        data-region="india"   onclick="selectRegion('india')">🇮🇳 India</button>
-      <button class="live-cat live-region"        data-region="china"   onclick="selectRegion('china')">🇨🇳 China</button>
-      <button class="live-cat live-region"        data-region="europe"  onclick="selectRegion('europe')">🇪🇺 Europe</button>
-      <button class="live-cat live-region"        data-region="mideast" onclick="selectRegion('mideast')">🕌 Mid East</button>
-    </div>
-    <div class="live-cats" id="live-topics" style="margin-top:4px">
-      <button class="live-cat live-topic active" data-topic="world"    onclick="selectTopic('world')">📰 All</button>
-      <button class="live-cat live-topic"        data-topic="politics"  onclick="selectTopic('politics')">🏛️ Politics</button>
-      <button class="live-cat live-topic"        data-topic="sports"    onclick="selectTopic('sports')">⚽ Sports</button>
-      <button class="live-cat live-topic"        data-topic="tech"      onclick="selectTopic('tech')">💻 Tech</button>
-      <button class="live-cat live-topic"        data-topic="finance"   onclick="selectTopic('finance')">📈 Finance</button>
-      <button class="live-cat live-topic"        data-topic="business"  onclick="selectTopic('business')">💼 Business</button>
-      <button class="live-cat live-topic"        data-topic="science"   onclick="selectTopic('science')">🔬 Science</button>
-      <button class="live-cat live-topic"        data-topic="health"    onclick="selectTopic('health')">🏥 Health</button>
-      <button class="live-cat live-topic"        data-topic="environment" onclick="selectTopic('environment')">🌿 Environment</button>
-    </div>
-    <div class="live-header">
-      <span id="live-status">Select a category to load headlines</span>
-      <div style="display:flex;align-items:center;gap:8px">
-        <span id="live-countdown" style="font-size:11px;opacity:0.7"></span>
-        <select id="live-interval" onchange="changeInterval()" style="background:#1e293b;color:#94a3b8;border:1px solid #334155;border-radius:6px;padding:3px 6px;font-size:12px;cursor:pointer">
-          <option value="60" selected>1 min</option>
-          <option value="300">5 min</option>
-          <option value="600">10 min</option>
-          <option value="1200">20 min</option>
-          <option value="1800">30 min</option>
-          <option value="3600">1 hr</option>
-        </select>
-        <button class="live-refresh-btn" onclick="refreshLive()">↻ Refresh</button>
-      </div>
+    <div class="live-controls">
+      <select class="live-sel" id="live-region-sel" onchange="selectRegion(this.value)">
+        <option value="world">🌍 World</option>
+        <option value="usa">🇺🇸 USA</option>
+        <option value="india">🇮🇳 India</option>
+        <option value="china">🇨🇳 China</option>
+        <option value="europe">🇪🇺 Europe</option>
+        <option value="mideast">🕌 Mid East</option>
+      </select>
+      <select class="live-sel" id="live-topic-sel" onchange="selectTopic(this.value)">
+        <option value="world">📰 All News</option>
+        <option value="politics">🏛️ Politics</option>
+        <option value="sports">⚽ Sports</option>
+        <option value="tech">💻 Tech</option>
+        <option value="finance">📈 Finance</option>
+        <option value="business">💼 Business</option>
+        <option value="science">🔬 Science</option>
+        <option value="health">🏥 Health</option>
+        <option value="environment">🌿 Environment</option>
+      </select>
+      <select class="live-sel" id="live-interval" onchange="changeInterval()">
+        <option value="60" selected>↻ 1 min</option>
+        <option value="300">↻ 5 min</option>
+        <option value="600">↻ 10 min</option>
+        <option value="1200">↻ 20 min</option>
+        <option value="1800">↻ 30 min</option>
+        <option value="3600">↻ 1 hr</option>
+      </select>
+      <button class="live-refresh-btn" onclick="refreshLive()">↻</button>
+      <span id="live-countdown" class="live-countdown-txt"></span>
+      <span id="live-status" class="live-status-txt">Loading…</span>
     </div>
     <div class="live-grid" id="live-grid">
-      <div class="live-loading">👆 Pick a category above</div>
+      <div class="live-loading">Loading headlines…</div>
     </div>
   </div>
 
@@ -1485,12 +1535,14 @@
     document.getElementById('nav-search').classList.toggle('active', isSearch);
     document.getElementById('nav-live').classList.toggle('active', isLive);
     document.getElementById('nav-alerts').classList.toggle('active', isAlerts);
-    if (isLive && !liveRegion) selectRegion('world');
+    if (isLive) loadLive(computeKey());
     if (isAlerts) markAllRead();
   }
 
   function selectTopic(topic) {
     liveTopic = topic;
+    const sel = document.getElementById('live-topic-sel');
+    if (sel) sel.value = topic;
     document.querySelectorAll('.live-topic').forEach(b =>
       b.classList.toggle('active', b.dataset.topic === topic)
     );
@@ -1499,6 +1551,8 @@
 
   function selectRegion(region) {
     liveRegion = region;
+    const sel = document.getElementById('live-region-sel');
+    if (sel) sel.value = region;
     document.querySelectorAll('.live-region').forEach(b =>
       b.classList.toggle('active', b.dataset.region === region)
     );
