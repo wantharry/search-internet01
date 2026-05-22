@@ -1176,11 +1176,11 @@
   const alertsSeen = new Set();
   let alertsData   = [];   // newest first
   let alertsUnread = 0;
-  let alertsSeeded = false;
   let alertsIdCtr  = 0;
-  let alertsPollTimer     = null;
+  let alertsPollTimer      = null;
   let alertsTimestampTimer = null;
   let alertsCatIdx = 0;
+  let alertsInitDone = false;
 
   function timeAgo(ts) {
     const s = Math.floor((Date.now() - ts) / 1000);
@@ -1216,9 +1216,10 @@
     alertsData = alertsData.filter(a => a.id !== id);
     const el = document.getElementById(id);
     if (el) {
+      el.style.transition = 'opacity 0.2s, transform 0.2s';
       el.style.opacity = '0';
       el.style.transform = 'translateX(40px)';
-      setTimeout(() => el.remove(), 200);
+      setTimeout(() => el.remove(), 220);
     }
   }
 
@@ -1255,43 +1256,74 @@
     return Array.from(document.querySelectorAll('.alerts-watch-cb:checked')).map(c => c.value);
   }
 
+  function setAlertsStatus(msg) {
+    const el = document.getElementById('alerts-status');
+    if (el) el.textContent = msg;
+  }
+
+  // Initial load: fetch all watched cats, show ALL items as read cards immediately
+  async function initAlerts() {
+    const cats = getWatchedCats();
+    setAlertsStatus('Loading headlines…');
+    const stack = document.getElementById('alerts-stack');
+    stack.innerHTML = '<div id="alerts-empty" style="padding:20px;text-align:center;color:#475569">⏳ Fetching headlines…</div>';
+
+    const allItems = [];
+    await Promise.all(cats.map(async (cat) => {
+      try {
+        const r = await fetch('/live/' + cat);
+        if (!r.ok) return;
+        const items = await r.json();
+        items.forEach(item => {
+          if (!alertsSeen.has(item.url)) {
+            alertsSeen.add(item.url);
+            allItems.push({ ...item, category: cat, arrivedAt: Date.now(), read: true, id: 'al' + alertsIdCtr++ });
+          }
+        });
+      } catch(e) {}
+    }));
+
+    // Sort by arrivedAt desc (they're all ~now, but preserves order)
+    allItems.sort((a, b) => b.arrivedAt - a.arrivedAt);
+    alertsData = allItems;
+
+    stack.innerHTML = '';
+    if (allItems.length === 0) {
+      stack.innerHTML = '<div id="alerts-empty" style="padding:30px;text-align:center;color:#475569">No headlines found. Try enabling more categories.</div>';
+    } else {
+      allItems.forEach(item => stack.appendChild(buildAlertCard(item)));
+    }
+    setAlertsStatus(allItems.length + ' headlines loaded · polling for new ones every 2 min');
+    alertsInitDone = true;
+  }
+
+  // Periodic poll: only push truly NEW items to the top as unread
   async function pollAlerts() {
+    if (!alertsInitDone) return;
     const cats = getWatchedCats();
     if (!cats.length) return;
     const cat = cats[alertsCatIdx % cats.length];
     alertsCatIdx++;
     try {
-      const resp = await fetch('/live/' + cat);
-      if (!resp.ok) return;
-      const items = await resp.json();
+      const r = await fetch('/live/' + cat);
+      if (!r.ok) return;
+      const items = await r.json();
       const now = Date.now();
       const newItems = [];
-      for (const item of items) {
+      items.forEach(item => {
         if (!alertsSeen.has(item.url)) {
           alertsSeen.add(item.url);
-          if (alertsSeeded) {
-            const a = { ...item, category: cat, arrivedAt: now, read: false, id: 'al' + alertsIdCtr++ };
-            newItems.push(a);
-            alertsData.unshift(a);
-          }
+          const a = { ...item, category: cat, arrivedAt: now, read: false, id: 'al' + alertsIdCtr++ };
+          newItems.push(a);
+          alertsData.unshift(a);
         }
-      }
-      if (!alertsSeeded) {
-        // Seed: mark all current items as already-seen (read) without showing
-        alertsSeeded = true;
-        const statusEl = document.getElementById('alerts-status');
-        if (statusEl) statusEl.textContent = 'Watching · new items will appear here';
-        const emptyEl = document.getElementById('alerts-empty');
-        if (emptyEl) emptyEl.textContent = '👁 Seeded ' + alertsSeen.size + ' headlines. New ones will appear automatically.';
-      } else if (newItems.length) {
+      });
+      if (newItems.length) {
         alertsUnread += newItems.length;
         updateAlertsBadge();
         const stack = document.getElementById('alerts-stack');
-        const empty = document.getElementById('alerts-empty');
-        if (empty) empty.remove();
         newItems.forEach(item => stack.insertBefore(buildAlertCard(item), stack.firstChild));
-        const statusEl = document.getElementById('alerts-status');
-        if (statusEl) statusEl.textContent = alertsData.length + ' items · last update: just now';
+        setAlertsStatus(alertsData.length + ' items · ' + newItems.length + ' new · ' + timeAgo(now));
       }
     } catch(e) { /* silent */ }
   }
@@ -1299,22 +1331,11 @@
   function startAlertsPolling() {
     clearInterval(alertsPollTimer);
     clearInterval(alertsTimestampTimer);
-    // Seed immediately by polling all watched cats once
-    getWatchedCats().forEach(async (cat) => {
-      try {
-        const r = await fetch('/live/' + cat);
-        const items = await r.json();
-        items.forEach(i => alertsSeen.add(i.url));
-      } catch(e) {}
-    });
-    alertsSeeded = true;
-    const statusEl = document.getElementById('alerts-status');
-    if (statusEl) statusEl.textContent = 'Seeding done · watching for new headlines…';
-    const emptyEl = document.getElementById('alerts-empty');
-    if (emptyEl) emptyEl.textContent = '👁 Watching for new headlines. They will pop up here.';
-    // Then poll every 90s for new items
-    alertsPollTimer = setInterval(pollAlerts, 90000);
-    // Update timestamps every 20s
+    // Show current headlines immediately
+    initAlerts();
+    // Poll every 2 min for new items (rotating through watched cats)
+    alertsPollTimer = setInterval(pollAlerts, 120000);
+    // Update "X min ago" timestamps every 20s
     alertsTimestampTimer = setInterval(() => {
       document.querySelectorAll('.alert-time[data-ts]').forEach(el => {
         el.textContent = timeAgo(parseInt(el.dataset.ts));
