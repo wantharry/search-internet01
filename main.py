@@ -346,9 +346,17 @@ LIVE_FEEDS: dict[str, list[str]] = {
         "https://www.wired.com/feed/rss",
     ],
     "finance": [
-        "https://feeds.reuters.com/reuters/businessNews",
         "https://feeds.a.dj.com/rss/RSSMarketsMain.xml",
+        "https://feeds.reuters.com/reuters/businessNews",
+        "https://www.ft.com/rss/home",
+        "https://feeds.a.dj.com/rss/RSSWorldNews.xml",
+    ],
+    "business": [
         "https://rss.nytimes.com/services/xml/rss/nyt/Business.xml",
+        "https://hbr.org/feed",
+        "https://www.inc.com/rss/",
+        "https://feeds.feedburner.com/entrepreneur/latest",
+        "https://www.forbes.com/business/feed/",
     ],
     "science": [
         "https://feeds.bbci.co.uk/news/science_and_environment/rss.xml",
@@ -453,6 +461,31 @@ LIVE_FEEDS: dict[str, list[str]] = {
         "https://www.aljazeera.com/xml/rss/all.xml",
         "https://feeds.reuters.com/reuters/MENATopNews",
         "https://feeds.a.dj.com/rss/RSSMarketsMain.xml",
+    ],
+    "business-usa": [
+        "https://rss.nytimes.com/services/xml/rss/nyt/Business.xml",
+        "https://www.inc.com/rss/",
+        "https://feeds.feedburner.com/entrepreneur/latest",
+        "https://www.forbes.com/business/feed/",
+    ],
+    "business-india": [
+        "https://economictimes.indiatimes.com/rssfeedstopstories.cms",
+        "https://www.moneycontrol.com/rss/MCtopnews.xml",
+        "https://timesofindia.indiatimes.com/rssfeedstopstories.cms",
+    ],
+    "business-china": [
+        "https://www.scmp.com/rss/92/feed",
+        "https://www.sixthtone.com/rss.xml",
+        "https://www.chinadailyhk.com/rss/china_news.xml",
+    ],
+    "business-europe": [
+        "https://rss.nytimes.com/services/xml/rss/nyt/Business.xml",
+        "https://www.ft.com/rss/home",
+        "https://rss.dw.com/rdf/rss-en-business",
+    ],
+    "business-mideast": [
+        "https://www.aljazeera.com/xml/rss/all.xml",
+        "https://feeds.reuters.com/reuters/MENATopNews",
     ],
     "science-usa": [
         "https://rss.nytimes.com/services/xml/rss/nyt/Science.xml",
