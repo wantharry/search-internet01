@@ -355,6 +355,31 @@ LIVE_FEEDS: dict[str, list[str]] = {
         "https://www.sciencedaily.com/rss/all.xml",
         "https://rss.nytimes.com/services/xml/rss/nyt/Science.xml",
     ],
+    "usa": [
+        "https://feeds.npr.org/1001/rss.xml",
+        "https://rss.nytimes.com/services/xml/rss/nyt/US.xml",
+        "https://feeds.reuters.com/reuters/domesticNews",
+    ],
+    "india": [
+        "https://timesofindia.indiatimes.com/rssfeedstopstories.cms",
+        "https://www.thehindu.com/news/national/feeder/default.rss",
+        "http://feeds.feedburner.com/ndtvnews-india-news",
+    ],
+    "china": [
+        "https://www.scmp.com/rss/91/feed",
+        "https://www.sixthtone.com/rss.xml",
+        "https://www.chinadailyhk.com/rss/china_news.xml",
+    ],
+    "europe": [
+        "http://feeds.bbci.co.uk/news/world/europe/rss.xml",
+        "https://rss.nytimes.com/services/xml/rss/nyt/Europe.xml",
+        "https://rss.dw.com/rdf/rss-en-all",
+    ],
+    "australia": [
+        "https://www.abc.net.au/news/feed/51120/rss.xml",
+        "https://www.theguardian.com/australia-news/rss",
+        "https://feeds.smh.com.au/rssheadlines/top.xml",
+    ],
 }
 
 
