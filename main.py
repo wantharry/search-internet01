@@ -226,7 +226,19 @@ async def _ollama_stream(model: str, prompt: str) -> AsyncGenerator[str, None]:
     """Stream tokens from Ollama, stripping <think>…</think> blocks."""
     payload: dict = {
         "model": model,
-        "messages": [{"role": "user", "content": prompt}],
+        "messages": [
+            {
+                "role": "system",
+                "content": (
+                    "You are a general-purpose research assistant. "
+                    "You answer questions on ANY topic — sports, history, science, "
+                    "entertainment, politics, people, culture, and more. "
+                    "Never refuse a question because it is not about programming. "
+                    "Always use the provided search results to give an accurate, helpful answer."
+                ),
+            },
+            {"role": "user", "content": prompt},
+        ],
         "stream": True,
     }
     # Disable built-in thinking for qwen3 to keep output clean
