@@ -382,7 +382,158 @@
       .result-url { word-break: break-all; white-space: normal; }
       .result-snippet { font-size: 12px; }
     }
-  </style>
+  
+  /* ── Top nav ── */
+  .top-nav {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 20px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 0;
+  }
+  .nav-tab {
+    background: none;
+    border: none;
+    border-bottom: 2.5px solid transparent;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    padding: 10px 18px;
+    margin-bottom: -1px;
+    transition: color .15s, border-color .15s;
+  }
+  .nav-tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+  .nav-tab:hover:not(.active) { color: var(--text); }
+
+  /* ── Live section ── */
+  #live-section { display: none; }
+  #live-section.show { display: block; }
+  #search-section { display: block; }
+  #search-section.hide { display: none; }
+
+  .live-cats {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+  }
+  .live-cat {
+    background: var(--surface2);
+    border: 1.5px solid var(--border);
+    border-radius: 20px;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 5px 14px;
+    transition: all .15s;
+  }
+  .live-cat.active {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #fff;
+  }
+  .live-cat:hover:not(.active) { border-color: var(--primary); color: var(--text); }
+
+  .live-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .live-refresh-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    cursor: pointer;
+    font-size: 12px;
+    padding: 4px 10px;
+  }
+  .live-refresh-btn:hover { border-color: var(--primary); color: var(--primary); }
+
+  .live-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 12px;
+  }
+  .live-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 16px;
+    transition: border-color .15s;
+  }
+  .live-card:hover { border-color: var(--primary); }
+  .live-card-source {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--primary);
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    margin-bottom: 6px;
+  }
+  .live-card-title {
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.4;
+    margin-bottom: 6px;
+  }
+  .live-card-title a {
+    color: var(--text);
+    text-decoration: none;
+  }
+  .live-card-title a:hover { color: var(--primary); }
+  .live-card-meta {
+    font-size: 11px;
+    color: var(--muted);
+    margin-bottom: 7px;
+  }
+  .live-card-snippet {
+    font-size: 12.5px;
+    color: var(--muted);
+    line-height: 1.55;
+    margin-bottom: 10px;
+  }
+  .live-summarize-btn {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 11px;
+    padding: 4px 10px;
+    transition: all .15s;
+  }
+  .live-summarize-btn:hover { border-color: var(--primary); color: var(--primary); }
+  .live-summarize-btn:disabled { opacity: .5; cursor: default; }
+  .live-ai-summary {
+    background: var(--surface2);
+    border-left: 3px solid var(--primary);
+    border-radius: 0 6px 6px 0;
+    font-size: 12.5px;
+    line-height: 1.6;
+    margin-top: 10px;
+    padding: 8px 12px;
+    color: var(--text);
+    display: none;
+  }
+  .live-ai-summary.show { display: block; }
+  .live-loading {
+    color: var(--muted);
+    font-size: 13px;
+    padding: 40px 0;
+    text-align: center;
+  }
+  @media (max-width: 640px) {
+    .live-grid { grid-template-columns: 1fr; }
+    .live-cats { gap: 6px; }
+  }
+
+</style>
 </head>
 <body>
 
@@ -394,6 +545,37 @@
 </header>
 
 <main>
+  <!-- Top nav -->
+  <div class="top-nav">
+    <button class="nav-tab active" id="nav-search" onclick="switchView('search')">🔍 Search</button>
+    <button class="nav-tab" id="nav-live" onclick="switchView('live')">📡 Live</button>
+  </div>
+
+  <!-- Live section -->
+  <div id="live-section">
+    <div class="live-cats">
+      <button class="live-cat active" data-cat="world"     onclick="selectCat('world')">🌍 World</button>
+      <button class="live-cat"        data-cat="politics"  onclick="selectCat('politics')">🏛️ Politics</button>
+      <button class="live-cat"        data-cat="sports"    onclick="selectCat('sports')">⚽ Sports</button>
+      <button class="live-cat"        data-cat="tech"      onclick="selectCat('tech')">💻 Tech</button>
+      <button class="live-cat"        data-cat="finance"   onclick="selectCat('finance')">📈 Finance</button>
+      <button class="live-cat"        data-cat="science"   onclick="selectCat('science')">🔬 Science</button>
+    </div>
+    <div class="live-header">
+      <span id="live-status">Select a category to load headlines</span>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span id="live-countdown" style="display:none;font-size:11px"></span>
+        <button class="live-refresh-btn" onclick="refreshLive()">↻ Refresh</button>
+      </div>
+    </div>
+    <div class="live-grid" id="live-grid">
+      <div class="live-loading">👆 Pick a category above</div>
+    </div>
+  </div>
+
+  <!-- Search section -->
+  <div id="search-section">
+
   <!-- Search controls -->
   <div class="search-card">
     <div class="input-row">
@@ -464,6 +646,7 @@
   <!-- Results -->
   <div id="results-header"></div>
   <div class="results-grid" id="results-grid"></div>
+  </div>
 </main>
 
 <script>
@@ -754,6 +937,125 @@
 
   // Init
   resetSummaryState();
+
+  /* ── Live feed ── */
+  let liveCategory = null;
+  let liveCountdownTimer = null;
+  let liveSecondsLeft = 300;
+
+  function switchView(view) {
+    const isLive = view === 'live';
+    document.getElementById('live-section').classList.toggle('show', isLive);
+    document.getElementById('search-section').classList.toggle('hide', isLive);
+    document.getElementById('nav-search').classList.toggle('active', !isLive);
+    document.getElementById('nav-live').classList.toggle('active', isLive);
+    if (isLive && !liveCategory) {
+      selectCat('world');
+    }
+  }
+
+  function selectCat(cat) {
+    liveCategory = cat;
+    document.querySelectorAll('.live-cat').forEach(b =>
+      b.classList.toggle('active', b.dataset.cat === cat)
+    );
+    loadLive(cat);
+  }
+
+  async function loadLive(cat) {
+    const grid = document.getElementById('live-grid');
+    const status = document.getElementById('live-status');
+    grid.innerHTML = '<div class="live-loading">⏳ Loading headlines…</div>';
+    status.textContent = 'Fetching feeds…';
+    try {
+      const resp = await fetch('/live/' + cat);
+      const items = await resp.json();
+      if (!items.length) {
+        grid.innerHTML = '<div class="live-loading">No items found.</div>';
+        status.textContent = 'No results';
+        return;
+      }
+      grid.innerHTML = items.map((item, i) => `
+        <div class="live-card" id="lc-${i}">
+          <div class="live-card-source">${esc(item.source)}</div>
+          <div class="live-card-title"><a href="${esc(item.url)}" target="_blank" rel="noopener">${esc(item.title)}</a></div>
+          <div class="live-card-meta">${esc(item.published)}</div>
+          <div class="live-card-snippet">${esc(item.snippet)}</div>
+          <button class="live-summarize-btn" onclick="summarizeLive(${i},this)" data-title="${esc(item.title)}" data-url="${esc(item.url)}" data-snippet="${esc(item.snippet)}">✨ Summarize</button>
+          <div class="live-ai-summary" id="las-${i}"></div>
+        </div>
+      `).join('');
+      status.textContent = `${items.length} headlines · auto-refreshes in 5 min`;
+      startCountdown();
+    } catch(e) {
+      grid.innerHTML = '<div class="live-loading">⚠️ Failed to load feeds.</div>';
+      status.textContent = 'Error loading feeds';
+    }
+  }
+
+  function startCountdown() {
+    clearInterval(liveCountdownTimer);
+    liveSecondsLeft = 300;
+    const cd = document.getElementById('live-countdown');
+    cd.style.display = 'inline';
+    liveCountdownTimer = setInterval(() => {
+      liveSecondsLeft--;
+      const m = Math.floor(liveSecondsLeft / 60);
+      const s = liveSecondsLeft % 60;
+      cd.textContent = `Refresh in ${m}:${String(s).padStart(2,'0')}`;
+      if (liveSecondsLeft <= 0) {
+        clearInterval(liveCountdownTimer);
+        refreshLive();
+      }
+    }, 1000);
+  }
+
+  function refreshLive() {
+    if (liveCategory) loadLive(liveCategory);
+  }
+
+  async function summarizeLive(idx, btn) {
+    const title   = btn.dataset.title;
+    const url     = btn.dataset.url;
+    const snippet = btn.dataset.snippet;
+    btn.disabled = true;
+    btn.textContent = '⏳ Summarizing…';
+    const box = document.getElementById('las-' + idx);
+    box.classList.add('show');
+    box.textContent = '';
+    const modelEl = document.getElementById('model-select');
+    const model = modelEl ? modelEl.value : 'qwen3:8b';
+    try {
+      const resp = await fetch('/live/summarize', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ title, url, snippet, model }),
+      });
+      const reader = resp.body.getReader();
+      const dec = new TextDecoder();
+      let buf = '';
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buf += dec.decode(value, { stream: true });
+        const lines = buf.split('\n');
+        buf = lines.pop() ?? '';
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          try {
+            const ev = JSON.parse(line.slice(6));
+            if (ev.text) box.textContent += ev.text;
+          } catch {}
+        }
+      }
+      btn.textContent = '✅ Done';
+    } catch(e) {
+      box.textContent = 'Error: ' + e.message;
+      btn.textContent = '✨ Summarize';
+      btn.disabled = false;
+    }
+  }
+
 </script>
 </body>
 </html>

@@ -320,6 +320,127 @@ async def search_endpoint(req: SearchRequest):
     )
 
 
+# ── Live feed ────────────────────────────────────────────────────────────────
+
+import feedparser  # noqa: E402
+
+LIVE_FEEDS: dict[str, list[str]] = {
+    "world": [
+        "http://feeds.bbci.co.uk/news/world/rss.xml",
+        "https://rss.nytimes.com/services/xml/rss/nyt/World.xml",
+        "https://feeds.reuters.com/reuters/worldNews",
+    ],
+    "politics": [
+        "http://feeds.bbci.co.uk/news/politics/rss.xml",
+        "https://feeds.reuters.com/reuters/politicsNews",
+        "https://rss.nytimes.com/services/xml/rss/nyt/Politics.xml",
+    ],
+    "sports": [
+        "https://www.espn.com/espn/rss/news",
+        "http://feeds.bbci.co.uk/sport/rss.xml",
+        "https://rss.nytimes.com/services/xml/rss/nyt/Sports.xml",
+    ],
+    "tech": [
+        "https://techcrunch.com/feed/",
+        "https://feeds.arstechnica.com/arstechnica/index",
+        "https://www.wired.com/feed/rss",
+    ],
+    "finance": [
+        "https://feeds.reuters.com/reuters/businessNews",
+        "https://feeds.a.dj.com/rss/RSSMarketsMain.xml",
+        "https://rss.nytimes.com/services/xml/rss/nyt/Business.xml",
+    ],
+    "science": [
+        "https://feeds.bbci.co.uk/news/science_and_environment/rss.xml",
+        "https://www.sciencedaily.com/rss/all.xml",
+        "https://rss.nytimes.com/services/xml/rss/nyt/Science.xml",
+    ],
+}
+
+
+@app.get("/live/{category}")
+async def get_live_feed(category: str):
+    """Fetch and merge RSS feeds for a category."""
+    feeds = LIVE_FEEDS.get(category.lower(), [])
+    if not feeds:
+        return JSONResponse({"error": "Unknown category"}, status_code=404)
+
+    all_items: list[dict] = []
+
+    async with httpx.AsyncClient(
+        timeout=10.0,
+        headers={"User-Agent": "Mozilla/5.0 (compatible; RSSReader/1.0)"},
+        follow_redirects=True,
+    ) as client:
+        async def fetch_feed(url: str) -> list[dict]:
+            try:
+                resp = await client.get(url)
+                parsed = feedparser.parse(resp.text)
+                source = parsed.feed.get("title", url)
+                items = []
+                for entry in parsed.entries[:15]:
+                    # Extract clean snippet
+                    snippet = entry.get("summary", "") or entry.get("description", "")
+                    # Strip HTML tags from snippet
+                    from bs4 import BeautifulSoup as _BS
+                    snippet = _BS(snippet, "html.parser").get_text(separator=" ", strip=True)[:300]
+                    published = ""
+                    if hasattr(entry, "published"):
+                        published = entry.get("published", "")
+                    items.append({
+                        "title": entry.get("title", "").strip(),
+                        "url": entry.get("link", ""),
+                        "snippet": snippet,
+                        "source": source,
+                        "published": published,
+                    })
+                return items
+            except Exception:
+                return []
+
+        results = await asyncio.gather(*[fetch_feed(url) for url in feeds])
+        for items in results:
+            all_items.extend(items)
+
+    # Deduplicate by URL, keep order
+    seen: set[str] = set()
+    unique: list[dict] = []
+    for item in all_items:
+        if item["url"] and item["url"] not in seen:
+            seen.add(item["url"])
+            unique.append(item)
+
+    return JSONResponse(unique[:50])
+
+
+class ArticleSummarizeRequest(BaseModel):
+    title: str
+    url: str
+    snippet: str
+    model: str = DEFAULT_MODEL
+
+
+@app.post("/live/summarize")
+async def summarize_article(req: ArticleSummarizeRequest):
+    """Stream a short AI summary of a news article headline + snippet."""
+    prompt = (
+        f"Summarize this news article in 3-4 sentences. Be factual and concise.\n\n"
+        f"Title: {req.title}\n"
+        f"Snippet: {req.snippet}\n\n"
+        f"Write the summary immediately. No preamble."
+    )
+
+    async def generate():
+        async for chunk in _ollama_stream(req.model, prompt):
+            yield f"data: {json.dumps({'text': chunk})}\n\n"
+        yield f"data: {json.dumps({'done': True})}\n\n"
+
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
