@@ -533,6 +533,41 @@
     .live-cats { gap: 6px; }
   }
 
+
+  /* ── Alerts tab ── */
+  #alerts-section { display: none; flex-direction: column; height: calc(100vh - 100px); overflow: hidden; }
+  #alerts-section.show { display: flex; }
+  .alerts-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px 14px; border-bottom: 1px solid #1e293b; }
+  .alerts-toolbar-left { display: flex; align-items: center; gap: 8px; flex: 1; flex-wrap: wrap; }
+  .alerts-ctrl-btn { background: #1e293b; border: 1px solid #334155; color: #94a3b8; padding: 4px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; }
+  .alerts-ctrl-btn:hover { border-color: var(--primary); color: var(--text); }
+  .alerts-status { font-size: 11px; color: #475569; }
+  .alerts-watching { display: flex; flex-wrap: wrap; gap: 8px; padding: 8px 14px; border-bottom: 1px solid #1e293b; align-items: center; }
+  .alerts-watching-label { font-size: 11px; color: #475569; text-transform: uppercase; letter-spacing: 0.05em; }
+  .alerts-watch-item { display: flex; align-items: center; gap: 4px; font-size: 12px; color: #94a3b8; cursor: pointer; }
+  .alerts-watch-item input[type=checkbox] { accent-color: var(--primary); }
+  #alerts-stack { flex: 1; overflow-y: auto; }
+  #alerts-empty { padding: 40px 20px; text-align: center; color: #475569; font-size: 14px; }
+  .alert-card { display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; border-bottom: 1px solid #1a2234; animation: alertSlideIn 0.35s cubic-bezier(.22,.68,0,1.2); transition: background 0.3s, opacity 0.2s; }
+  .alert-card.unread { background: rgba(99,102,241,0.07); border-left: 3px solid var(--primary); }
+  .alert-card.read { border-left: 3px solid transparent; }
+  .alert-card:hover { background: rgba(255,255,255,0.03); }
+  @keyframes alertSlideIn { from { opacity: 0; transform: translateY(-14px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+  .alert-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--primary); margin-top: 5px; flex-shrink: 0; transition: background 0.3s; }
+  .alert-card.read .alert-dot { background: #334155; }
+  .alert-body { flex: 1; min-width: 0; }
+  .alert-meta { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 4px; }
+  .alert-cat { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; padding: 1px 6px; border-radius: 4px; background: #1e293b; color: #6366f1; }
+  .alert-source { font-size: 11px; color: #64748b; }
+  .alert-time { font-size: 11px; color: #475569; margin-left: auto; white-space: nowrap; }
+  .alert-title { font-size: 14px; font-weight: 600; line-height: 1.35; margin-bottom: 3px; }
+  .alert-title a { color: var(--text); text-decoration: none; }
+  .alert-title a:hover { color: var(--primary); }
+  .alert-snippet { font-size: 12px; color: #94a3b8; line-height: 1.4; }
+  .alert-dismiss { background: none; border: none; color: #334155; cursor: pointer; font-size: 20px; line-height: 1; padding: 0 2px; flex-shrink: 0; transition: color 0.15s; }
+  .alert-dismiss:hover { color: #ef4444; }
+  .nav-badge { display: inline-block; background: #ef4444; color: #fff; font-size: 10px; font-weight: 700; min-width: 16px; height: 16px; border-radius: 8px; padding: 0 4px; line-height: 16px; text-align: center; margin-left: 5px; vertical-align: middle; opacity: 0; transform: scale(0.7); transition: opacity 0.2s, transform 0.2s; }
+  .nav-badge.show { opacity: 1; transform: scale(1); }
 </style>
 </head>
 <body>
@@ -549,6 +584,7 @@
   <div class="top-nav">
     <button class="nav-tab" id="nav-search" onclick="switchView('search')">🔍 Search</button>
     <button class="nav-tab active" id="nav-live" onclick="switchView('live')">📡 Live</button>
+    <button class="nav-tab" id="nav-alerts" onclick="switchView('alerts')">🔔 Alerts<span class="nav-badge" id="alerts-badge"></span></button>
   </div>
 
   <!-- Live section -->
@@ -593,6 +629,29 @@
   </div>
 
   <!-- Search section -->
+  <div id="alerts-section">
+    <div class="alerts-toolbar">
+      <div class="alerts-toolbar-left">
+        <button class="alerts-ctrl-btn" onclick="markAllRead()">✓ Mark all read</button>
+        <button class="alerts-ctrl-btn" onclick="clearAlerts()">🗑 Clear all</button>
+        <span class="alerts-status" id="alerts-status">Starting up…</span>
+      </div>
+    </div>
+    <div class="alerts-watching">
+      <span class="alerts-watching-label">Watch:</span>
+      <label class="alerts-watch-item"><input type="checkbox" class="alerts-watch-cb" value="breaking" checked> 🚨 Breaking</label>
+      <label class="alerts-watch-item"><input type="checkbox" class="alerts-watch-cb" value="world" checked> 🌍 World</label>
+      <label class="alerts-watch-item"><input type="checkbox" class="alerts-watch-cb" value="politics"> 🏛️ Politics</label>
+      <label class="alerts-watch-item"><input type="checkbox" class="alerts-watch-cb" value="tech"> 💻 Tech</label>
+      <label class="alerts-watch-item"><input type="checkbox" class="alerts-watch-cb" value="finance"> 📈 Finance</label>
+      <label class="alerts-watch-item"><input type="checkbox" class="alerts-watch-cb" value="health"> 🏥 Health</label>
+      <label class="alerts-watch-item"><input type="checkbox" class="alerts-watch-cb" value="environment"> 🌿 Environment</label>
+      <label class="alerts-watch-item"><input type="checkbox" class="alerts-watch-cb" value="science"> 🔬 Science</label>
+    </div>
+    <div id="alerts-stack">
+      <div id="alerts-empty">⏳ Seeding headlines… New alerts will pop up here.</div>
+    </div>
+  </div>
   <div id="search-section" class="hide">
 
   <!-- Search controls -->
@@ -970,12 +1029,17 @@
   }
 
   function switchView(view) {
-    const isLive = view === 'live';
+    const isLive    = view === 'live';
+    const isAlerts  = view === 'alerts';
+    const isSearch  = view === 'search';
     document.getElementById('live-section').classList.toggle('show', isLive);
-    document.getElementById('search-section').classList.toggle('hide', isLive);
-    document.getElementById('nav-search').classList.toggle('active', !isLive);
+    document.getElementById('search-section').classList.toggle('hide', !isSearch);
+    document.getElementById('alerts-section').classList.toggle('show', isAlerts);
+    document.getElementById('nav-search').classList.toggle('active', isSearch);
     document.getElementById('nav-live').classList.toggle('active', isLive);
-    if (isLive && !liveTopic) selectTopic('world');
+    document.getElementById('nav-alerts').classList.toggle('active', isAlerts);
+    if (isLive && !liveRegion) selectRegion('world');
+    if (isAlerts) markAllRead();
   }
 
   function selectTopic(topic) {
@@ -1062,6 +1126,7 @@
   // Live is the default view — geography first, load world/all on startup
   document.addEventListener('DOMContentLoaded', () => {
     selectRegion('world');
+    startAlertsPolling();
   });
 
   async function summarizeLive(idx, btn) {
@@ -1104,6 +1169,157 @@
       btn.textContent = '✨ Summarize';
       btn.disabled = false;
     }
+  }
+
+
+  /* ── Alerts ── */
+  const alertsSeen = new Set();
+  let alertsData   = [];   // newest first
+  let alertsUnread = 0;
+  let alertsSeeded = false;
+  let alertsIdCtr  = 0;
+  let alertsPollTimer     = null;
+  let alertsTimestampTimer = null;
+  let alertsCatIdx = 0;
+
+  function timeAgo(ts) {
+    const s = Math.floor((Date.now() - ts) / 1000);
+    if (s < 10)    return 'just now';
+    if (s < 60)    return s + 's ago';
+    if (s < 3600)  return Math.floor(s / 60) + 'm ago';
+    if (s < 86400) return Math.floor(s / 3600) + 'h ago';
+    return Math.floor(s / 86400) + 'd ago';
+  }
+
+  function buildAlertCard(item) {
+    const div = document.createElement('div');
+    div.className = 'alert-card ' + (item.read ? 'read' : 'unread');
+    div.id = item.id;
+    const catLabel = item.category.charAt(0).toUpperCase() + item.category.slice(1);
+    div.innerHTML = `
+      <div class="alert-dot"></div>
+      <div class="alert-body">
+        <div class="alert-meta">
+          <span class="alert-cat">${esc(catLabel)}</span>
+          <span class="alert-source">${esc(item.source || '')}</span>
+          <span class="alert-time" data-ts="${item.arrivedAt}">${timeAgo(item.arrivedAt)}</span>
+        </div>
+        <div class="alert-title"><a href="${esc(item.url)}" target="_blank" rel="noopener">${esc(item.title)}</a></div>
+        <div class="alert-snippet">${esc(item.snippet || '')}</div>
+      </div>
+      <button class="alert-dismiss" onclick="dismissAlert('${item.id}')" title="Dismiss">×</button>
+    `;
+    return div;
+  }
+
+  function dismissAlert(id) {
+    alertsData = alertsData.filter(a => a.id !== id);
+    const el = document.getElementById(id);
+    if (el) {
+      el.style.opacity = '0';
+      el.style.transform = 'translateX(40px)';
+      setTimeout(() => el.remove(), 200);
+    }
+  }
+
+  function clearAlerts() {
+    alertsData = []; alertsUnread = 0;
+    updateAlertsBadge();
+    document.getElementById('alerts-stack').innerHTML =
+      '<div id="alerts-empty">🗑 Cleared. New alerts will appear here automatically.</div>';
+  }
+
+  function markAllRead() {
+    alertsUnread = 0;
+    updateAlertsBadge();
+    alertsData.forEach(a => a.read = true);
+    document.querySelectorAll('.alert-card.unread').forEach(el => {
+      el.classList.replace('unread', 'read');
+      const dot = el.querySelector('.alert-dot');
+      if (dot) dot.style.background = '#334155';
+    });
+  }
+
+  function updateAlertsBadge() {
+    const b = document.getElementById('alerts-badge');
+    if (!b) return;
+    if (alertsUnread > 0) {
+      b.textContent = alertsUnread > 99 ? '99+' : alertsUnread;
+      b.classList.add('show');
+    } else {
+      b.classList.remove('show');
+    }
+  }
+
+  function getWatchedCats() {
+    return Array.from(document.querySelectorAll('.alerts-watch-cb:checked')).map(c => c.value);
+  }
+
+  async function pollAlerts() {
+    const cats = getWatchedCats();
+    if (!cats.length) return;
+    const cat = cats[alertsCatIdx % cats.length];
+    alertsCatIdx++;
+    try {
+      const resp = await fetch('/live/' + cat);
+      if (!resp.ok) return;
+      const items = await resp.json();
+      const now = Date.now();
+      const newItems = [];
+      for (const item of items) {
+        if (!alertsSeen.has(item.url)) {
+          alertsSeen.add(item.url);
+          if (alertsSeeded) {
+            const a = { ...item, category: cat, arrivedAt: now, read: false, id: 'al' + alertsIdCtr++ };
+            newItems.push(a);
+            alertsData.unshift(a);
+          }
+        }
+      }
+      if (!alertsSeeded) {
+        // Seed: mark all current items as already-seen (read) without showing
+        alertsSeeded = true;
+        const statusEl = document.getElementById('alerts-status');
+        if (statusEl) statusEl.textContent = 'Watching · new items will appear here';
+        const emptyEl = document.getElementById('alerts-empty');
+        if (emptyEl) emptyEl.textContent = '👁 Seeded ' + alertsSeen.size + ' headlines. New ones will appear automatically.';
+      } else if (newItems.length) {
+        alertsUnread += newItems.length;
+        updateAlertsBadge();
+        const stack = document.getElementById('alerts-stack');
+        const empty = document.getElementById('alerts-empty');
+        if (empty) empty.remove();
+        newItems.forEach(item => stack.insertBefore(buildAlertCard(item), stack.firstChild));
+        const statusEl = document.getElementById('alerts-status');
+        if (statusEl) statusEl.textContent = alertsData.length + ' items · last update: just now';
+      }
+    } catch(e) { /* silent */ }
+  }
+
+  function startAlertsPolling() {
+    clearInterval(alertsPollTimer);
+    clearInterval(alertsTimestampTimer);
+    // Seed immediately by polling all watched cats once
+    getWatchedCats().forEach(async (cat) => {
+      try {
+        const r = await fetch('/live/' + cat);
+        const items = await r.json();
+        items.forEach(i => alertsSeen.add(i.url));
+      } catch(e) {}
+    });
+    alertsSeeded = true;
+    const statusEl = document.getElementById('alerts-status');
+    if (statusEl) statusEl.textContent = 'Seeding done · watching for new headlines…';
+    const emptyEl = document.getElementById('alerts-empty');
+    if (emptyEl) emptyEl.textContent = '👁 Watching for new headlines. They will pop up here.';
+    // Then poll every 90s for new items
+    alertsPollTimer = setInterval(pollAlerts, 90000);
+    // Update timestamps every 20s
+    alertsTimestampTimer = setInterval(() => {
+      document.querySelectorAll('.alert-time[data-ts]').forEach(el => {
+        el.textContent = timeAgo(parseInt(el.dataset.ts));
+      });
+    }, 20000);
   }
 
 </script>

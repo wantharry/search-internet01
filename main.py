@@ -325,6 +325,14 @@ async def search_endpoint(req: SearchRequest):
 import feedparser  # noqa: E402
 
 LIVE_FEEDS: dict[str, list[str]] = {
+    "breaking": [
+        "http://feeds.bbci.co.uk/news/rss.xml",
+        "https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml",
+        "https://feeds.npr.org/1001/rss.xml",
+        "https://www.aljazeera.com/xml/rss/all.xml",
+        "https://feeds.reuters.com/reuters/topNews",
+        "https://feeds.skynews.com/feeds/rss/home.xml",
+    ],
     "world": [
         "http://feeds.bbci.co.uk/news/world/rss.xml",
         "https://rss.nytimes.com/services/xml/rss/nyt/World.xml",
