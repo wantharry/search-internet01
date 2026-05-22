@@ -553,22 +553,22 @@
 
   <!-- Live section -->
   <div id="live-section" class="show">
-    <div class="live-cats" id="live-topics">
-      <button class="live-cat live-topic active" data-topic="world"    onclick="selectTopic('world')">🌍 World</button>
-      <button class="live-cat live-topic"         data-topic="politics" onclick="selectTopic('politics')">🏛️ Politics</button>
-      <button class="live-cat live-topic"         data-topic="sports"   onclick="selectTopic('sports')">⚽ Sports</button>
-      <button class="live-cat live-topic"         data-topic="tech"     onclick="selectTopic('tech')">💻 Tech</button>
-      <button class="live-cat live-topic"         data-topic="finance"  onclick="selectTopic('finance')">📈 Finance</button>
-      <button class="live-cat live-topic"         data-topic="business" onclick="selectTopic('business')">💼 Business</button>
-      <button class="live-cat live-topic"         data-topic="science"  onclick="selectTopic('science')">🔬 Science</button>
+    <div class="live-cats" id="live-regions">
+      <button class="live-cat live-region active" data-region="world"   onclick="selectRegion('world')">🌍 World</button>
+      <button class="live-cat live-region"        data-region="usa"     onclick="selectRegion('usa')">🇺🇸 USA</button>
+      <button class="live-cat live-region"        data-region="india"   onclick="selectRegion('india')">🇮🇳 India</button>
+      <button class="live-cat live-region"        data-region="china"   onclick="selectRegion('china')">🇨🇳 China</button>
+      <button class="live-cat live-region"        data-region="europe"  onclick="selectRegion('europe')">🇪🇺 Europe</button>
+      <button class="live-cat live-region"        data-region="mideast" onclick="selectRegion('mideast')">🕌 Mid East</button>
     </div>
-    <div class="live-cats" id="live-regions" style="margin-top:4px">
-      <button class="live-cat live-region active" data-region="world"     onclick="selectRegion('world')">🌐 All</button>
-      <button class="live-cat live-region"        data-region="usa"       onclick="selectRegion('usa')">🇺🇸 USA</button>
-      <button class="live-cat live-region"        data-region="india"     onclick="selectRegion('india')">🇮🇳 India</button>
-      <button class="live-cat live-region"        data-region="china"     onclick="selectRegion('china')">🇨🇳 China</button>
-      <button class="live-cat live-region"        data-region="europe"    onclick="selectRegion('europe')">🇪🇺 Europe</button>
-      <button class="live-cat live-region"        data-region="mideast"   onclick="selectRegion('mideast')">🕌 Mid East</button>
+    <div class="live-cats" id="live-topics" style="margin-top:4px">
+      <button class="live-cat live-topic active" data-topic="world"    onclick="selectTopic('world')">📰 All</button>
+      <button class="live-cat live-topic"        data-topic="politics"  onclick="selectTopic('politics')">🏛️ Politics</button>
+      <button class="live-cat live-topic"        data-topic="sports"    onclick="selectTopic('sports')">⚽ Sports</button>
+      <button class="live-cat live-topic"        data-topic="tech"      onclick="selectTopic('tech')">💻 Tech</button>
+      <button class="live-cat live-topic"        data-topic="finance"   onclick="selectTopic('finance')">📈 Finance</button>
+      <button class="live-cat live-topic"        data-topic="business"  onclick="selectTopic('business')">💼 Business</button>
+      <button class="live-cat live-topic"        data-topic="science"   onclick="selectTopic('science')">🔬 Science</button>
     </div>
     <div class="live-header">
       <span id="live-status">Select a category to load headlines</span>
@@ -1057,9 +1057,9 @@
     loadLive(computeKey());
   }
 
-  // Live is the default view — auto-load world on startup
+  // Live is the default view — geography first, load world/all on startup
   document.addEventListener('DOMContentLoaded', () => {
-    selectTopic('world');
+    selectRegion('world');
   });
 
   async function summarizeLive(idx, btn) {
