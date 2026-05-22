@@ -19,7 +19,7 @@ load_dotenv()
 OLLAMA_BASE = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
 DEFAULT_MODEL = os.environ.get("OLLAMA_MODEL", "qwen3:8b")
 
-app = FastAPI(title="AI Internet Search")
+app = FastAPI(title="Pulse")
 
 static_dir = os.path.join(os.path.dirname(__file__), "static")
 if os.path.isdir(static_dir):
