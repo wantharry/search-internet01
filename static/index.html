@@ -1227,7 +1227,7 @@
     <div class="live-controls">
       <select class="live-sel" id="live-region-sel" onchange="selectRegion(this.value)">
         <option value="world">🌍 World</option>
-        <option value="usa">🇺🇸 USA</option>
+        <option value="usa" selected>🇺🇸 USA</option>
         <option value="india">🇮🇳 India</option>
         <option value="china">🇨🇳 China</option>
         <option value="europe">🇪🇺 Europe</option>
@@ -1641,7 +1641,7 @@
 
   /* ── Live feed ── */
   let liveTopic  = 'world';
-  let liveRegion = 'world';
+  let liveRegion = 'usa';
   let liveCountdownTimer = null;
   let liveSecondsLeft = 60;
 
