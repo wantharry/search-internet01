@@ -476,6 +476,34 @@
     letter-spacing: .04em;
     margin-bottom: 6px;
   }
+  .live-topic-badge {
+    display: inline-block;
+    font-size: 9.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    padding: 2px 7px;
+    border-radius: 4px;
+    margin-left: 7px;
+    vertical-align: middle;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--muted);
+  }
+  .live-topic-badge.breaking  { background:#7f1d1d; border-color:#b91c1c; color:#fca5a5; }
+  .live-topic-badge.world     { background:#1e3a5f; border-color:#2563eb; color:#93c5fd; }
+  .live-topic-badge.politics  { background:#3b0764; border-color:#7c3aed; color:#c4b5fd; }
+  .live-topic-badge.finance   { background:#14532d; border-color:#16a34a; color:#86efac; }
+  .live-topic-badge.tech      { background:#0c4a6e; border-color:#0284c7; color:#7dd3fc; }
+  .live-topic-badge.ai        { background:#1e1b4b; border-color:#6366f1; color:#c7d2fe; }
+  .live-topic-badge.health    { background:#4c1d95; border-color:#a855f7; color:#e9d5ff; }
+  .live-topic-badge.science   { background:#0f3460; border-color:#0ea5e9; color:#bae6fd; }
+  .live-topic-badge.environment { background:#14532d; border-color:#15803d; color:#bbf7d0; }
+  .live-topic-badge.climate   { background:#164e63; border-color:#06b6d4; color:#a5f3fc; }
+  .live-topic-badge.sports    { background:#7c2d12; border-color:#ea580c; color:#fed7aa; }
+  .live-topic-badge.entertainment { background:#831843; border-color:#db2777; color:#fbcfe8; }
+  .live-topic-badge.gaming    { background:#1a1a2e; border-color:#8b5cf6; color:#ddd6fe; }
+  .live-topic-badge.realestate { background:#1c1917; border-color:#a16207; color:#fde68a; }
   .live-card-title {
     font-size: 14px;
     font-weight: 600;
@@ -677,6 +705,8 @@
     transition: transform .22s ease, box-shadow .22s ease, border-color .22s ease;
     position: relative;
     overflow: hidden;
+    animation: cardPopIn .3s cubic-bezier(.22,.68,0,1.2) both;
+    animation-delay: calc(var(--i, 0) * 22ms);
   }
   .live-card::after {
     content: '';
@@ -720,6 +750,29 @@
     50% { opacity: .6; transform: scale(.8); }
   }
 
+  .live-card-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 12px;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .live-star-rating {
+    display: flex;
+    gap: 3px;
+    cursor: pointer;
+    user-select: none;
+  }
+  .live-star {
+    font-size: 17px;
+    color: var(--border);
+    transition: color .12s, transform .12s;
+    line-height: 1;
+  }
+  .live-star.active { color: #f59e0b; }
+  .live-star-rating:hover .live-star { color: #f59e0b; }
+  .live-star:hover ~ .live-star { color: var(--border) !important; }
   .live-card-title {
     font-family: var(--font-head);
     font-size: 16.5px;
@@ -936,6 +989,10 @@
     75%  { transform: rotate(12deg) scale(1.2); }
     100% { transform: rotate(0deg) scale(1); }
   }
+  @keyframes cardPopIn {
+    from { opacity: 0; transform: scale(0.94) translateY(10px); }
+    to   { opacity: 1; transform: none; }
+  }
 
   .live-summarize-btn {
     font-family: var(--font-body);
@@ -1090,6 +1147,19 @@
     .alert-title      { font-size: 16px; }
     header h1         { font-size: 20px; }
   }
+  /* ── Mobile overflow prevention ── */
+  html, body { overflow-x: hidden; }
+  @media (max-width: 640px) {
+    html, body, main { overflow-x: hidden; max-width: 100%; }
+    .live-controls { flex-wrap: wrap; gap: 6px; }
+    .live-sel { flex: 1 1 130px; min-width: 0; font-size: 12px; }
+    #live-sort-sel { flex: 1 1 115px; }
+    .live-grid { grid-template-columns: 1fr !important; }
+    .live-card { padding: 14px 14px 12px; }
+    .live-card-footer { flex-direction: column; align-items: flex-start; gap: 10px; }
+    .live-star { font-size: 20px; }
+    .result-card { word-break: break-word; }
+  }
 
   /* ── Light theme overrides ── */
   [data-theme="light"] header {
@@ -1243,6 +1313,10 @@
         <option value="science">🔬 Science</option>
         <option value="health">🏥 Health</option>
         <option value="environment">🌿 Environment</option>
+        <option value="entertainment">🎬 Entertainment</option>
+        <option value="ai">🤖 AI / ML</option>
+        <option value="gaming">🎮 Gaming</option>
+        <option value="realestate">🏠 Real Estate</option>
       </select>
       <select class="live-sel" id="live-interval" onchange="changeInterval()">
         <option value="60" selected>↻ 1 min</option>
@@ -1251,6 +1325,10 @@
         <option value="1200">↻ 20 min</option>
         <option value="1800">↻ 30 min</option>
         <option value="3600">↻ 1 hr</option>
+      </select>
+      <select class="live-sel" id="live-sort-sel" onchange="loadLive(computeKey())" title="Sort order">
+        <option value="newest">⬇ Newest</option>
+        <option value="rated">⭐ Top Rated</option>
       </select>
       <button class="live-refresh-btn" onclick="refreshLive()">↻</button>
       <span id="live-countdown" class="live-countdown-txt"></span>
@@ -1646,7 +1724,7 @@
   let liveSecondsLeft = 60;
 
   function computeKey() {
-    if (liveTopic === 'world') return liveRegion === 'world' ? 'world' : liveRegion;
+    if (liveTopic === 'world') return liveRegion === 'world' ? 'all' : liveRegion;
     if (liveRegion === 'world') return liveTopic;
     return liveTopic + '-' + liveRegion;
   }
@@ -1688,6 +1766,26 @@
   // backward compat shim (used nowhere now but kept for safety)
   function selectCat(cat) { selectTopic(cat); }
 
+  function getLiveRating(url) {
+    try { return (JSON.parse(localStorage.getItem('live_ratings') || '{}')[url]) || 0; }
+    catch(e) { return 0; }
+  }
+
+  function saveLiveRating(url, val, cardIdx) {
+    try {
+      const r = JSON.parse(localStorage.getItem('live_ratings') || '{}');
+      if (r[url] === val) { delete r[url]; val = 0; } // click same = clear
+      else r[url] = val;
+      localStorage.setItem('live_ratings', JSON.stringify(r));
+      const card = document.getElementById('lc-' + cardIdx);
+      if (card) card.querySelectorAll('.live-star').forEach(s => {
+        s.classList.toggle('active', parseInt(s.dataset.v) <= val);
+      });
+      const sortSel = document.getElementById('live-sort-sel');
+      if (sortSel && sortSel.value === 'rated') loadLive(computeKey());
+    } catch(e) {}
+  }
+
   async function loadLive(cat) {
     const grid = document.getElementById('live-grid');
     const status = document.getElementById('live-status');
@@ -1695,22 +1793,37 @@
     status.textContent = 'Fetching feeds…';
     try {
       const resp = await fetch('/live/' + cat);
-      const items = await resp.json();
+      let items = await resp.json();
       if (!items.length) {
         grid.innerHTML = '<div class="live-loading">No items found.</div>';
         status.textContent = 'No results';
         return;
       }
-      grid.innerHTML = items.map((item, i) => `
-        <div class="live-card" id="lc-${i}">
-          <div class="live-card-source">${esc(item.source)}</div>
+      const sortSel = document.getElementById('live-sort-sel');
+      if (sortSel && sortSel.value === 'rated') {
+        items = [...items].sort((a,b) => (getLiveRating(b.url)||0) - (getLiveRating(a.url)||0));
+      }
+      grid.innerHTML = items.map((item, i) => {
+        const rating = getLiveRating(item.url) || 0;
+        const stars = [1,2,3,4,5].map(v =>
+          `<span class="live-star${v <= rating ? ' active' : ''}" data-v="${v}" onclick="saveLiveRating('${esc(item.url)}',${v},${i})" title="${v} star${v>1?'s':''}">★</span>`
+        ).join('');
+        const badge = item.topic
+          ? `<span class="live-topic-badge ${esc(item.topic.toLowerCase().replace(/ /g,'-'))}">${esc(item.topic)}</span>`
+          : '';
+        return `
+        <div class="live-card" id="lc-${i}" style="--i:${i}">
+          <div class="live-card-source">${esc(item.source)}${badge}</div>
           <div class="live-card-title"><a href="${esc(item.url)}" target="_blank" rel="noopener">${esc(item.title)}</a></div>
           <div class="live-card-meta">${esc(item.published)}</div>
           <div class="live-card-snippet">${esc(item.snippet)}</div>
-          <button class="live-summarize-btn" onclick="summarizeLive(${i},this)" data-title="${esc(item.title)}" data-url="${esc(item.url)}" data-snippet="${esc(item.snippet)}">Summarize</button>
+          <div class="live-card-footer">
+            <div class="live-star-rating" title="Rate this article">${stars}</div>
+            <button class="live-summarize-btn" onclick="summarizeLive(${i},this)" data-title="${esc(item.title)}" data-url="${esc(item.url)}" data-snippet="${esc(item.snippet)}">✨ Summarize</button>
+          </div>
           <div class="live-ai-summary" id="las-${i}"></div>
-        </div>
-      `).join('');
+        </div>`;
+      }).join('');
       const ivSecs = getIntervalSecs();
       const ivLabel = ivSecs < 3600 ? `${ivSecs/60|0} min` : '1 hr';
       status.textContent = `${items.length} headlines · auto-refresh: ${ivLabel}`;
@@ -1720,7 +1833,6 @@
       status.textContent = 'Error loading feeds';
     }
   }
-
   function getIntervalSecs() {
     const el = document.getElementById('live-interval');
     return el ? parseInt(el.value) : 60;
@@ -1924,7 +2036,7 @@
   }
 
   function getWatchedCats() {
-    return ['breaking','world','politics','tech','finance','health','environment','science'];
+    return ['breaking','world','politics','tech','finance','health','environment','science','entertainment','ai','gaming','realestate'];
   }
 
   function setAlertsStatus(msg) {

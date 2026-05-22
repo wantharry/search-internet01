@@ -80,13 +80,14 @@ class SearchRequest(BaseModel):
     fetch_content: bool = True
     model: str = DEFAULT_MODEL
     summary_depth: str = "all"  # ultra_short | summary | detailed | all
+    timelimit: str | None = None  # d | w | m | y | None
 
 
-def _ddg_search_sync(query: str, max_results: int) -> list:
+def _ddg_search_sync(query: str, max_results: int, timelimit: str | None = None) -> list:
     """Synchronous DuckDuckGo search — runs in a thread pool."""
     try:
         with DDGS() as ddgs:
-            return list(ddgs.text(query, max_results=max_results))
+            return list(ddgs.text(query, max_results=max_results, timelimit=timelimit))
     except Exception as exc:
         raise RuntimeError(f"DuckDuckGo search failed: {exc}") from exc
 
@@ -120,7 +121,7 @@ async def stream_search(req: SearchRequest) -> AsyncGenerator[str, None]:
     try:
         with ThreadPoolExecutor(max_workers=1) as pool:
             raw_results = await loop.run_in_executor(
-                pool, _ddg_search_sync, req.query, max_results
+                pool, _ddg_search_sync, req.query, max_results, req.timelimit
             )
     except RuntimeError as exc:
         yield evt({"type": "error", "message": str(exc)})
@@ -325,6 +326,45 @@ async def search_endpoint(req: SearchRequest):
 import feedparser  # noqa: E402
 
 LIVE_FEEDS: dict[str, list[str]] = {
+    # ── All News (global aggregation across every topic) ──────────────────
+    "all": [
+        # Breaking / World
+        "http://feeds.bbci.co.uk/news/rss.xml",
+        "https://feeds.reuters.com/reuters/topNews",
+        "https://www.aljazeera.com/xml/rss/all.xml",
+        # Politics
+        "https://rss.nytimes.com/services/xml/rss/nyt/Politics.xml",
+        "http://feeds.bbci.co.uk/news/politics/rss.xml",
+        # Tech
+        "https://techcrunch.com/feed/",
+        "https://feeds.arstechnica.com/arstechnica/index",
+        # Finance
+        "https://www.cnbc.com/id/10000664/device/rss/rss.html",
+        "https://feeds.marketwatch.com/marketwatch/topstories/",
+        # Sports
+        "https://www.espn.com/espn/rss/news",
+        "http://feeds.bbci.co.uk/sport/rss.xml",
+        # Science
+        "https://www.sciencedaily.com/rss/all.xml",
+        "https://rss.nytimes.com/services/xml/rss/nyt/Science.xml",
+        # Health
+        "https://feeds.bbci.co.uk/news/health/rss.xml",
+        "https://rss.nytimes.com/services/xml/rss/nyt/Health.xml",
+        # Environment
+        "https://feeds.bbci.co.uk/news/science_and_environment/rss.xml",
+        "https://rss.nytimes.com/services/xml/rss/nyt/Climate.xml",
+        # Entertainment
+        "https://variety.com/feed/",
+        "https://deadline.com/feed/",
+        # AI / ML
+        "https://techcrunch.com/category/artificial-intelligence/feed/",
+        "https://venturebeat.com/category/ai/feed/",
+        # Gaming
+        "https://kotaku.com/rss",
+        # Real Estate
+        "https://rss.nytimes.com/services/xml/rss/nyt/RealEstate.xml",
+        "https://www.housingwire.com/feed/",
+    ],
     "breaking": [
         "http://feeds.bbci.co.uk/news/rss.xml",
         "https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml",
@@ -354,10 +394,11 @@ LIVE_FEEDS: dict[str, list[str]] = {
         "https://www.wired.com/feed/rss",
     ],
     "finance": [
-        "https://feeds.a.dj.com/rss/RSSMarketsMain.xml",
-        "https://feeds.reuters.com/reuters/businessNews",
-        "https://www.ft.com/rss/home",
-        "https://feeds.a.dj.com/rss/RSSWorldNews.xml",
+        "https://www.cnbc.com/id/10000664/device/rss/rss.html",   # CNBC Finance
+        "https://finance.yahoo.com/news/rssindex",                  # Yahoo Finance
+        "https://feeds.marketwatch.com/marketwatch/topstories/",    # MarketWatch
+        "https://feeds.a.dj.com/rss/RSSMarketsMain.xml",           # WSJ Markets
+        "https://seekingalpha.com/market_currents.xml",             # Seeking Alpha
     ],
     "business": [
         "https://rss.nytimes.com/services/xml/rss/nyt/Business.xml",
@@ -450,9 +491,11 @@ LIVE_FEEDS: dict[str, list[str]] = {
         "https://feeds.arstechnica.com/arstechnica/index",
     ],
     "finance-usa": [
-        "https://feeds.a.dj.com/rss/RSSMarketsMain.xml",
-        "https://rss.nytimes.com/services/xml/rss/nyt/Business.xml",
-        "https://feeds.reuters.com/reuters/businessNews",
+        "https://www.cnbc.com/id/10000664/device/rss/rss.html",    # CNBC Finance
+        "https://feeds.marketwatch.com/marketwatch/topstories/",    # MarketWatch
+        "https://feeds.a.dj.com/rss/RSSMarketsMain.xml",           # WSJ Markets
+        "https://finance.yahoo.com/news/rssindex",                  # Yahoo Finance
+        "https://www.cnbc.com/id/15839135/device/rss/rss.html",    # CNBC Earnings
     ],
     "finance-india": [
         "https://economictimes.indiatimes.com/rssfeedstopstories.cms",
@@ -581,12 +624,117 @@ LIVE_FEEDS: dict[str, list[str]] = {
         "https://feeds.reuters.com/reuters/MENATopNews",
         "https://www.climatechangenews.com/feed/",
     ],
+
+    # ── New topics ──────────────────────────────────────────────────────────
+    "entertainment": [
+        "https://variety.com/feed/",                          # Variety
+        "https://www.hollywoodreporter.com/feed/",           # Hollywood Reporter
+        "https://deadline.com/feed/",                        # Deadline
+    ],
+    "ai": [
+        "https://techcrunch.com/category/artificial-intelligence/feed/",  # TechCrunch AI
+        "https://venturebeat.com/category/ai/feed/",         # VentureBeat AI
+        "https://aiweekly.co/issues.rss",                    # AI Weekly
+        "https://feeds.feedburner.com/MachineLearningMastery", # ML Mastery
+    ],
+    "gaming": [
+        "https://kotaku.com/rss",                            # Kotaku
+        "https://www.ign.com/articles?tags=new-articles/rss.json",  # IGN
+        "https://feeds.feedburner.com/ign/games-all",        # IGN Games
+        "https://www.pcgamer.com/rss/",                      # PC Gamer
+    ],
+    "realestate": [
+        "https://rss.nytimes.com/services/xml/rss/nyt/RealEstate.xml",  # NYT Real Estate
+        "https://www.housingwire.com/feed/",                 # HousingWire
+        "https://www.realtor.com/news/feed/",                # Realtor.com
+        "https://biggerpockets.com/blog/feed",               # BiggerPockets
+    ],
+}
+
+
+# Importance weights for feeds used in the "all" aggregation.
+# Higher = more likely to surface to the top when combined with recency.
+# Scale: 3.0 (critical) → 1.0 (light)
+_ALL_WEIGHTS: dict[str, float] = {
+    # Breaking / World (critical)
+    "http://feeds.bbci.co.uk/news/rss.xml":               3.0,
+    "https://feeds.reuters.com/reuters/topNews":           3.0,
+    "https://www.aljazeera.com/xml/rss/all.xml":          3.0,
+    # Politics (high)
+    "https://rss.nytimes.com/services/xml/rss/nyt/Politics.xml": 2.8,
+    "http://feeds.bbci.co.uk/news/politics/rss.xml":      2.8,
+    # Finance (high)
+    "https://www.cnbc.com/id/10000664/device/rss/rss.html": 2.5,
+    "https://feeds.marketwatch.com/marketwatch/topstories/": 2.5,
+    # Tech / AI (medium-high)
+    "https://techcrunch.com/feed/":                        2.2,
+    "https://feeds.arstechnica.com/arstechnica/index":     2.2,
+    "https://techcrunch.com/category/artificial-intelligence/feed/": 2.2,
+    "https://venturebeat.com/category/ai/feed/":           2.2,
+    # Health / Science (medium)
+    "https://feeds.bbci.co.uk/news/health/rss.xml":        1.8,
+    "https://rss.nytimes.com/services/xml/rss/nyt/Health.xml": 1.8,
+    "https://www.sciencedaily.com/rss/all.xml":            1.6,
+    "https://rss.nytimes.com/services/xml/rss/nyt/Science.xml": 1.6,
+    # Environment (medium)
+    "https://feeds.bbci.co.uk/news/science_and_environment/rss.xml": 1.6,
+    "https://rss.nytimes.com/services/xml/rss/nyt/Climate.xml": 1.6,
+    # Real Estate (medium-low)
+    "https://rss.nytimes.com/services/xml/rss/nyt/RealEstate.xml": 1.4,
+    "https://www.housingwire.com/feed/":                   1.4,
+    # Entertainment / Gaming / Sports (light)
+    "https://variety.com/feed/":                           1.2,
+    "https://deadline.com/feed/":                          1.2,
+    "https://kotaku.com/rss":                              1.0,
+    "https://www.espn.com/espn/rss/news":                  1.0,
+    "http://feeds.bbci.co.uk/sport/rss.xml":               1.0,
+}
+
+# Human-readable topic label for each feed URL (used in "all" aggregation)
+_ALL_TOPIC_LABELS: dict[str, str] = {
+    "http://feeds.bbci.co.uk/news/rss.xml":               "Breaking",
+    "https://feeds.reuters.com/reuters/topNews":           "Breaking",
+    "https://www.aljazeera.com/xml/rss/all.xml":          "World",
+    "https://rss.nytimes.com/services/xml/rss/nyt/Politics.xml": "Politics",
+    "http://feeds.bbci.co.uk/news/politics/rss.xml":      "Politics",
+    "https://www.cnbc.com/id/10000664/device/rss/rss.html": "Finance",
+    "https://feeds.marketwatch.com/marketwatch/topstories/": "Finance",
+    "https://techcrunch.com/feed/":                        "Tech",
+    "https://feeds.arstechnica.com/arstechnica/index":     "Tech",
+    "https://techcrunch.com/category/artificial-intelligence/feed/": "AI",
+    "https://venturebeat.com/category/ai/feed/":           "AI",
+    "https://feeds.bbci.co.uk/news/health/rss.xml":        "Health",
+    "https://rss.nytimes.com/services/xml/rss/nyt/Health.xml": "Health",
+    "https://www.sciencedaily.com/rss/all.xml":            "Science",
+    "https://rss.nytimes.com/services/xml/rss/nyt/Science.xml": "Science",
+    "https://feeds.bbci.co.uk/news/science_and_environment/rss.xml": "Environment",
+    "https://rss.nytimes.com/services/xml/rss/nyt/Climate.xml": "Climate",
+    "https://rss.nytimes.com/services/xml/rss/nyt/RealEstate.xml": "Real Estate",
+    "https://www.housingwire.com/feed/":                   "Real Estate",
+    "https://variety.com/feed/":                           "Entertainment",
+    "https://deadline.com/feed/":                          "Entertainment",
+    "https://kotaku.com/rss":                              "Gaming",
+    "https://www.espn.com/espn/rss/news":                  "Sports",
+    "http://feeds.bbci.co.uk/sport/rss.xml":               "Sports",
+}
+
+# Fallback topic labels for single-topic tabs (used when use_weighted=False)
+_KEY_TOPIC_LABELS: dict[str, str] = {
+    "world": "World", "politics": "Politics", "sports": "Sports",
+    "tech": "Tech", "finance": "Finance", "business": "Business",
+    "science": "Science", "health": "Health", "environment": "Environment",
+    "entertainment": "Entertainment", "ai": "AI", "gaming": "Gaming",
+    "realestate": "Real Estate", "breaking": "Breaking",
+    "usa": "USA", "india": "India", "china": "China",
+    "europe": "Europe", "mideast": "Mideast",
 }
 
 
 @app.get("/live/{category}")
 async def get_live_feed(category: str):
     """Fetch and merge RSS feeds for a category."""
+    import math, time as _time, calendar
+
     key = category.lower()
     feeds = LIVE_FEEDS.get(key, [])
     if not feeds and "-" in key:
@@ -595,6 +743,9 @@ async def get_live_feed(category: str):
         feeds = LIVE_FEEDS.get(region, []) or LIVE_FEEDS.get(topic, [])
     if not feeds:
         return JSONResponse({"error": "Unknown category"}, status_code=404)
+
+    use_weighted = (key == "all")
+    now_ts = _time.time()
 
     all_items: list[dict] = []
 
@@ -608,22 +759,39 @@ async def get_live_feed(category: str):
                 resp = await client.get(url)
                 parsed = feedparser.parse(resp.text)
                 source = parsed.feed.get("title", url)
+                weight = _ALL_WEIGHTS.get(url, 1.5) if use_weighted else 1.0
+                topic_label = _ALL_TOPIC_LABELS.get(url, "") if use_weighted else _KEY_TOPIC_LABELS.get(key, "")
                 items = []
-                for entry in parsed.entries[:15]:
-                    # Extract clean snippet
+                for entry in parsed.entries[:20]:
                     snippet = entry.get("summary", "") or entry.get("description", "")
-                    # Strip HTML tags from snippet
                     from bs4 import BeautifulSoup as _BS
                     snippet = _BS(snippet, "html.parser").get_text(separator=" ", strip=True)[:300]
-                    published = ""
-                    if hasattr(entry, "published"):
-                        published = entry.get("published", "")
+                    pub_ts = 0
+                    if entry.get("published_parsed"):
+                        try:
+                            pub_ts = calendar.timegm(entry.published_parsed)
+                        except Exception:
+                            pass
+                    elif entry.get("updated_parsed"):
+                        try:
+                            pub_ts = calendar.timegm(entry.updated_parsed)
+                        except Exception:
+                            pass
+                    # Time-decay score: importance × e^(-age_hours / half_life)
+                    # half_life=6h means an article 6h old scores half as much as brand new
+                    if use_weighted and pub_ts:
+                        age_hours = (now_ts - pub_ts) / 3600
+                        score = weight * math.exp(-age_hours / 6.0)
+                    else:
+                        score = float(pub_ts)  # plain timestamp sort for single topics
                     items.append({
                         "title": entry.get("title", "").strip(),
                         "url": entry.get("link", ""),
                         "snippet": snippet,
                         "source": source,
-                        "published": published,
+                        "published": entry.get("published", entry.get("updated", "")),
+                        "topic": topic_label,
+                        "_score": score,
                     })
                 return items
             except Exception:
@@ -633,7 +801,7 @@ async def get_live_feed(category: str):
         for items in results:
             all_items.extend(items)
 
-    # Deduplicate by URL, keep order
+    # Deduplicate by URL, then sort by score (weighted or timestamp)
     seen: set[str] = set()
     unique: list[dict] = []
     for item in all_items:
@@ -641,7 +809,12 @@ async def get_live_feed(category: str):
             seen.add(item["url"])
             unique.append(item)
 
-    return JSONResponse(unique[:50])
+    unique.sort(key=lambda x: x["_score"], reverse=True)
+    for item in unique:
+        item.pop("_score", None)
+
+    limit = 100 if key == "all" else 50
+    return JSONResponse(unique[:limit])
 
 
 class ArticleSummarizeRequest(BaseModel):
