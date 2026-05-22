@@ -380,13 +380,102 @@ LIVE_FEEDS: dict[str, list[str]] = {
         "https://www.theguardian.com/australia-news/rss",
         "https://feeds.smh.com.au/rssheadlines/top.xml",
     ],
+    "politics-usa": [
+        "https://feeds.npr.org/1004/rss.xml",
+        "https://rss.nytimes.com/services/xml/rss/nyt/Politics.xml",
+        "https://feeds.reuters.com/reuters/politicsNews",
+    ],
+    "politics-india": [
+        "https://timesofindia.indiatimes.com/rssfeedstopstories.cms",
+        "https://www.thehindu.com/news/national/feeder/default.rss",
+        "http://feeds.feedburner.com/ndtvnews-india-news",
+    ],
+    "politics-china": [
+        "https://www.scmp.com/rss/91/feed",
+        "https://www.chinadailyhk.com/rss/china_news.xml",
+        "https://www.sixthtone.com/rss.xml",
+    ],
+    "politics-europe": [
+        "http://feeds.bbci.co.uk/news/world/europe/rss.xml",
+        "https://rss.dw.com/rdf/rss-en-all",
+        "https://rss.nytimes.com/services/xml/rss/nyt/Europe.xml",
+    ],
+    "politics-australia": [
+        "https://www.abc.net.au/news/feed/51120/rss.xml",
+        "https://www.theguardian.com/australia-news/rss",
+    ],
+    "sports-usa": [
+        "https://www.espn.com/espn/rss/news",
+        "https://rss.nytimes.com/services/xml/rss/nyt/Sports.xml",
+    ],
+    "sports-india": [
+        "http://feeds.feedburner.com/ndtvnews-sports",
+        "https://timesofindia.indiatimes.com/rssfeeds/4719148.cms",
+    ],
+    "sports-europe": [
+        "http://feeds.bbci.co.uk/sport/rss.xml",
+        "https://www.skysports.com/rss/12040",
+    ],
+    "sports-australia": [
+        "https://www.abc.net.au/news/feed/51120/rss.xml",
+        "https://www.theguardian.com/australia/sport/rss",
+    ],
+    "tech-india": [
+        "https://gadgets360.com/rss/news",
+        "https://www.digit.in/rss/news.xml",
+    ],
+    "tech-china": [
+        "https://www.scmp.com/rss/36/feed",
+        "https://www.sixthtone.com/rss.xml",
+    ],
+    "tech-europe": [
+        "https://rss.dw.com/rdf/rss-en-all",
+        "https://feeds.arstechnica.com/arstechnica/index",
+    ],
+    "finance-usa": [
+        "https://feeds.a.dj.com/rss/RSSMarketsMain.xml",
+        "https://rss.nytimes.com/services/xml/rss/nyt/Business.xml",
+        "https://feeds.reuters.com/reuters/businessNews",
+    ],
+    "finance-india": [
+        "https://economictimes.indiatimes.com/rssfeedstopstories.cms",
+        "https://www.moneycontrol.com/rss/MCtopnews.xml",
+    ],
+    "finance-europe": [
+        "https://feeds.a.dj.com/rss/RSSMarketsMain.xml",
+        "https://rss.dw.com/rdf/rss-en-business",
+    ],
+    "finance-china": [
+        "https://www.scmp.com/rss/92/feed",
+    ],
+    "finance-australia": [
+        "https://www.theguardian.com/australia/business/rss",
+        "https://www.abc.net.au/news/feed/51120/rss.xml",
+    ],
+    "science-usa": [
+        "https://rss.nytimes.com/services/xml/rss/nyt/Science.xml",
+        "https://www.sciencedaily.com/rss/all.xml",
+    ],
+    "science-india": [
+        "https://www.thehindu.com/sci-tech/science/feeder/default.rss",
+        "https://timesofindia.indiatimes.com/rssfeeds/2886704.cms",
+    ],
+    "science-europe": [
+        "https://feeds.bbci.co.uk/news/science_and_environment/rss.xml",
+        "https://rss.dw.com/rdf/rss-en-science",
+    ],
 }
 
 
 @app.get("/live/{category}")
 async def get_live_feed(category: str):
     """Fetch and merge RSS feeds for a category."""
-    feeds = LIVE_FEEDS.get(category.lower(), [])
+    key = category.lower()
+    feeds = LIVE_FEEDS.get(key, [])
+    if not feeds and "-" in key:
+        # fallback to region, then to topic
+        topic, region = key.split("-", 1)
+        feeds = LIVE_FEEDS.get(region, []) or LIVE_FEEDS.get(topic, [])
     if not feeds:
         return JSONResponse({"error": "Unknown category"}, status_code=404)
 

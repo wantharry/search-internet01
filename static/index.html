@@ -553,20 +553,21 @@
 
   <!-- Live section -->
   <div id="live-section" class="show">
-    <div class="live-cats">
-      <button class="live-cat active" data-cat="world"     onclick="selectCat('world')">🌍 World</button>
-      <button class="live-cat"        data-cat="politics"  onclick="selectCat('politics')">🏛️ Politics</button>
-      <button class="live-cat"        data-cat="sports"    onclick="selectCat('sports')">⚽ Sports</button>
-      <button class="live-cat"        data-cat="tech"      onclick="selectCat('tech')">💻 Tech</button>
-      <button class="live-cat"        data-cat="finance"   onclick="selectCat('finance')">📈 Finance</button>
-      <button class="live-cat"        data-cat="science"   onclick="selectCat('science')">🔬 Science</button>
+    <div class="live-cats" id="live-topics">
+      <button class="live-cat live-topic active" data-topic="world"    onclick="selectTopic('world')">🌍 World</button>
+      <button class="live-cat live-topic"         data-topic="politics" onclick="selectTopic('politics')">🏛️ Politics</button>
+      <button class="live-cat live-topic"         data-topic="sports"   onclick="selectTopic('sports')">⚽ Sports</button>
+      <button class="live-cat live-topic"         data-topic="tech"     onclick="selectTopic('tech')">💻 Tech</button>
+      <button class="live-cat live-topic"         data-topic="finance"  onclick="selectTopic('finance')">📈 Finance</button>
+      <button class="live-cat live-topic"         data-topic="science"  onclick="selectTopic('science')">🔬 Science</button>
     </div>
-    <div class="live-cats" style="margin-top:4px">
-      <button class="live-cat"        data-cat="usa"       onclick="selectCat('usa')">🇺🇸 USA</button>
-      <button class="live-cat"        data-cat="india"     onclick="selectCat('india')">🇮🇳 India</button>
-      <button class="live-cat"        data-cat="china"     onclick="selectCat('china')">🇨🇳 China</button>
-      <button class="live-cat"        data-cat="europe"    onclick="selectCat('europe')">🇪🇺 Europe</button>
-      <button class="live-cat"        data-cat="australia" onclick="selectCat('australia')">🇦🇺 Australia</button>
+    <div class="live-cats" id="live-regions" style="margin-top:4px">
+      <button class="live-cat live-region active" data-region="world"     onclick="selectRegion('world')">🌐 All</button>
+      <button class="live-cat live-region"        data-region="usa"       onclick="selectRegion('usa')">🇺🇸 USA</button>
+      <button class="live-cat live-region"        data-region="india"     onclick="selectRegion('india')">🇮🇳 India</button>
+      <button class="live-cat live-region"        data-region="china"     onclick="selectRegion('china')">🇨🇳 China</button>
+      <button class="live-cat live-region"        data-region="europe"    onclick="selectRegion('europe')">🇪🇺 Europe</button>
+      <button class="live-cat live-region"        data-region="australia" onclick="selectRegion('australia')">🇦🇺 Australia</button>
     </div>
     <div class="live-header">
       <span id="live-status">Select a category to load headlines</span>
@@ -954,9 +955,16 @@
   resetSummaryState();
 
   /* ── Live feed ── */
-  let liveCategory = null;
+  let liveTopic  = 'world';
+  let liveRegion = 'world';
   let liveCountdownTimer = null;
   let liveSecondsLeft = 60;
+
+  function computeKey() {
+    if (liveTopic === 'world') return liveRegion === 'world' ? 'world' : liveRegion;
+    if (liveRegion === 'world') return liveTopic;
+    return liveTopic + '-' + liveRegion;
+  }
 
   function switchView(view) {
     const isLive = view === 'live';
@@ -964,18 +972,27 @@
     document.getElementById('search-section').classList.toggle('hide', isLive);
     document.getElementById('nav-search').classList.toggle('active', !isLive);
     document.getElementById('nav-live').classList.toggle('active', isLive);
-    if (isLive && !liveCategory) {
-      selectCat('world');
-    }
+    if (isLive && !liveTopic) selectTopic('world');
   }
 
-  function selectCat(cat) {
-    liveCategory = cat;
-    document.querySelectorAll('.live-cat').forEach(b =>
-      b.classList.toggle('active', b.dataset.cat === cat)
+  function selectTopic(topic) {
+    liveTopic = topic;
+    document.querySelectorAll('.live-topic').forEach(b =>
+      b.classList.toggle('active', b.dataset.topic === topic)
     );
-    loadLive(cat);
+    loadLive(computeKey());
   }
+
+  function selectRegion(region) {
+    liveRegion = region;
+    document.querySelectorAll('.live-region').forEach(b =>
+      b.classList.toggle('active', b.dataset.region === region)
+    );
+    loadLive(computeKey());
+  }
+
+  // backward compat shim (used nowhere now but kept for safety)
+  function selectCat(cat) { selectTopic(cat); }
 
   async function loadLive(cat) {
     const grid = document.getElementById('live-grid');
@@ -1036,13 +1053,12 @@
   }
 
   function refreshLive() {
-    if (liveCategory) loadLive(liveCategory);
+    loadLive(computeKey());
   }
 
   // Live is the default view — auto-load world on startup
   document.addEventListener('DOMContentLoaded', () => {
-    liveCategory = 'world';
-    loadLive('world');
+    selectTopic('world');
   });
 
   async function summarizeLive(idx, btn) {
