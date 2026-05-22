@@ -1143,6 +1143,57 @@
   }
   [data-theme="light"] ::-webkit-scrollbar-track { background: #f0f0f0; }
   [data-theme="light"] ::-webkit-scrollbar-thumb { background: #ccc; }
+
+  /* ── Grey theme overrides ── */
+  [data-theme="grey"] header {
+    background: rgba(220,220,220,.95);
+    border-bottom-color: #c0c0c0;
+    box-shadow: 0 1px 8px rgba(0,0,0,.1);
+  }
+  [data-theme="grey"] .live-card,
+  [data-theme="grey"] .search-card {
+    box-shadow: 0 2px 10px rgba(0,0,0,.1);
+  }
+  [data-theme="grey"] .live-card:hover {
+    box-shadow: 0 6px 24px rgba(0,0,0,.16);
+    border-color: rgba(0,0,0,.25);
+  }
+  [data-theme="grey"] .live-ai-summary {
+    background: rgba(0,0,0,.05);
+  }
+  [data-theme="grey"] .live-summarize-btn {
+    background: linear-gradient(var(--surface2),var(--surface2)) padding-box,
+                linear-gradient(135deg,#333,#666,#333) border-box;
+    color: #333;
+  }
+  [data-theme="grey"] .live-summarize-btn:hover:not(:disabled) {
+    background: linear-gradient(135deg,#111,#333,#111) padding-box,
+                linear-gradient(135deg,#333,#666,#333) border-box;
+    color: #fff;
+  }
+  [data-theme="grey"] .nav-tab.active {
+    color: #111;
+    border-bottom-color: #111;
+    text-shadow: none;
+  }
+  [data-theme="grey"] .live-sel,
+  [data-theme="grey"] .theme-sel {
+    background-color: #e8e8e8;
+    color: #111;
+    border-color: #bbb;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%23555' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  }
+  [data-theme="grey"] .alert-card.unread {
+    background: rgba(0,0,0,.05);
+  }
+  [data-theme="grey"] .alert-card.unread::before { background: #111; }
+  [data-theme="grey"] .live-refresh-btn {
+    background: #e8e8e8;
+    border-color: #bbb;
+    color: #333;
+  }
+  [data-theme="grey"] ::-webkit-scrollbar-track { background: #d0d0d0; }
+  [data-theme="grey"] ::-webkit-scrollbar-thumb { background: #aaa; }
 </style>
 </head>
 <body>
@@ -1151,6 +1202,7 @@
   <div class="logo">⚡</div>
   <h1>Pulse</h1>
   <select class="theme-sel" id="theme-select" onchange="applyTheme(this.value)" title="Switch theme">
+    <option value="grey">🔘 Grey</option>
     <option value="light">⬜ Light</option>
     <option value="mono">⬛ Mono</option>
     <option value="cosmos">🟣 Cosmos</option>
@@ -1975,6 +2027,23 @@
 
   // ── Themes ────────────────────────────────────────────────────────────────
   const THEMES = {
+    grey: {
+      '--bg':          '#dcdcdc',
+      '--surface':     '#f0f0f0',
+      '--surface2':    '#e4e4e4',
+      '--border':      '#c8c8c8',
+      '--primary':     '#1a1a1a',
+      '--primary-dim': 'rgba(0,0,0,.09)',
+      '--text':        '#111111',
+      '--muted':       '#555555',
+      '--teal':        '#0070c0',
+      '--green':       '#008040',
+      '--red':         '#cc2200',
+      'gradient1':     'rgba(0,0,0,.03)',
+      'gradient2':     'rgba(0,0,0,.02)',
+      'header-grad':   'linear-gradient(135deg,#111111,#444444 50%,#222222)',
+      'light': true,
+    },
     light: {
       '--bg':          '#f5f5f5',
       '--surface':     '#ffffff',
@@ -2134,7 +2203,7 @@
 
   // Restore on load
   (function() {
-    const saved = localStorage.getItem('ai-search-theme') || 'light';
+    const saved = localStorage.getItem('ai-search-theme') || 'grey';
     applyTheme(saved);
   })();
 </script>
