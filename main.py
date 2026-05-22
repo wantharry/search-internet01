@@ -32,43 +32,45 @@ _MATH_HINT = (
     "For example: the quadratic formula is $x = \\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}$.\n\n"
 )
 
-PROMPTS: dict[str, str] = {
-    "ultra_short": (
-        'Using ONLY the search results below about "{query}", write an ULTRA-SHORT summary. '
-        "Do NOT ask clarifying questions. Do NOT say you cannot answer. Just write the summary now.\n"
-        "- **TL;DR**: One sentence (max 25 words)\n"
-        "- **3 Key Points**: Three bullet points, each max 15 words\n"
-        "- **Top Link**: The single most useful URL\n"
-        "Be brutally concise. No filler.\n\n"
-        "Search Results:\n{context}"
-    ),
-    "summary": (
-        'Using ONLY the search results below about "{query}", write a summary. '
-        "Do NOT ask clarifying questions. Do NOT say you cannot answer. Just write the summary now.\n\n"
-        "1. **Key Findings**: The most important information discovered\n"
-        "2. **Notable Facts**: Key data points, statistics, or details\n"
-        "3. **Best Sources**: 2–3 most relevant URLs with brief descriptions\n"
-        "4. **Overview**: A concise paragraph synthesising everything\n\n"
-        "Search Results:\n{context}"
-    ),
-    "detailed": (
-        'Using ONLY the search results below about "{query}", write a DETAILED analysis. '
-        "Do NOT ask clarifying questions. Do NOT say you cannot answer. Write the full analysis now.\n\n"
-        "## Background\n"
-        "Provide context and why this topic matters.\n\n"
-        "## Key Findings\n"
-        "Cover all major findings discovered across sources in depth.\n\n"
-        "## Important Facts & Data\n"
-        "List all notable statistics, dates, names, figures, and specifics.\n\n"
-        "## Different Perspectives\n"
-        "Note any consensus, disagreements, or contrasting viewpoints across sources.\n\n"
-        "## Best Resources\n"
-        "List the top 4–5 URLs with a description of what each one covers.\n\n"
-        "## Conclusion\n"
-        "A thorough paragraph synthesising everything with actionable insights.\n\n"
-        "Search Results:\n{context}"
-    ),
-}
+def _build_prompt(depth: str, query: str, context: str) -> str:
+    """Build a prompt that forces the model to output directly without asking questions."""
+    if depth == "ultra_short":
+        return (
+            f'You are an automated summarization engine. The user searched for: "{query}"\n'
+            f"Below are the search results. Your ONLY job is to output this exact format:\n\n"
+            f"**TL;DR**: [one sentence, max 25 words summarising the topic]\n\n"
+            f"**Key Points**:\n- [key point 1]\n- [key point 2]\n- [key point 3]\n\n"
+            f"**Top Link**: [most useful URL]\n\n"
+            f"Output ONLY the above. No greetings, no questions, no suggestions. Begin immediately.\n\n"
+            f"Search Results:\n{context}"
+        )
+    elif depth == "summary":
+        return (
+            f'You are an automated summarization engine. The user searched for: "{query}"\n'
+            f"Below are the search results. Output this exact format, filled in with real information:\n\n"
+            f"**Key Findings**: [most important information from the results]\n\n"
+            f"**Notable Facts**: [key data points, statistics, names, dates]\n\n"
+            f"**Best Sources**:\n- [URL 1]: [brief description]\n- [URL 2]: [brief description]\n\n"
+            f"**Overview**: [concise paragraph synthesising everything]\n\n"
+            f"Output ONLY the above. No greetings, no questions, no suggestions. Begin immediately.\n\n"
+            f"Search Results:\n{context}"
+        )
+    else:  # detailed
+        return (
+            f'You are an automated research engine. The user searched for: "{query}"\n'
+            f"Below are the search results. Output this exact report, filled in with real information:\n\n"
+            f"## Background\n[Context about {query} and why it matters]\n\n"
+            f"## Key Findings\n[All major findings from the sources]\n\n"
+            f"## Important Facts & Data\n[Statistics, dates, names, figures]\n\n"
+            f"## Different Perspectives\n[Contrasting viewpoints across sources]\n\n"
+            f"## Best Resources\n- [URL 1]: [what it covers]\n- [URL 2]: [what it covers]\n\n"
+            f"## Conclusion\n[Thorough synthesis with actionable insights]\n\n"
+            f"Output ONLY the above report. No greetings, no questions, no suggestions. Begin immediately.\n\n"
+            f"Search Results:\n{context}"
+        )
+
+
+PROMPTS: dict[str, str] = {}  # kept for import compatibility; use _build_prompt instead
 
 
 class SearchRequest(BaseModel):
@@ -187,10 +189,11 @@ async def stream_search(req: SearchRequest) -> AsyncGenerator[str, None]:
     _MAX_FOR    = {"ultra_short": 10, "summary": 15, "detailed": 20}
     _LEN_FOR    = {"ultra_short": 300, "summary": 900, "detailed": 1500}
 
+    _valid_depths = {"ultra_short", "summary", "detailed"}
     depths_to_run = (
         ["ultra_short", "summary", "detailed"]
         if req.summary_depth == "all"
-        else [req.summary_depth if req.summary_depth in PROMPTS else "summary"]
+        else [req.summary_depth if req.summary_depth in _valid_depths else "summary"]
     )
     sorted_results = sorted(processed, key=lambda x: x["index"])
 
@@ -210,7 +213,7 @@ async def stream_search(req: SearchRequest) -> AsyncGenerator[str, None]:
             context_parts.append(part)
         context = "\n\n".join(context_parts)
 
-        prompt = _MATH_HINT + PROMPTS[depth].format(query=req.query, context=context)
+        prompt = _MATH_HINT + _build_prompt(depth, req.query, context)
         async for chunk in _ollama_stream(req.model, prompt):
             yield evt({"type": "summary_chunk", "text": chunk, "depth": depth})
 
