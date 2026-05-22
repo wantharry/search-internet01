@@ -499,6 +499,80 @@ LIVE_FEEDS: dict[str, list[str]] = {
         "https://feeds.bbci.co.uk/news/science_and_environment/rss.xml",
         "https://rss.dw.com/rdf/rss-en-science",
     ],
+    "health": [
+        "https://feeds.bbci.co.uk/news/health/rss.xml",
+        "https://rss.nytimes.com/services/xml/rss/nyt/Health.xml",
+        "https://www.who.int/feeds/entity/news/en/rss.xml",
+        "https://www.statnews.com/feed/",
+        "https://www.medicalnewstoday.com/rss",
+        "https://www.sciencedaily.com/rss/health_medicine.xml",
+        "https://feeds.webmd.com/rss/rss.aspx?RSSSource=RSS_PUBLIC",
+    ],
+    "health-usa": [
+        "https://rss.nytimes.com/services/xml/rss/nyt/Health.xml",
+        "https://www.statnews.com/feed/",
+        "https://feeds.feedburner.com/MedpageToday",
+        "https://feeds.webmd.com/rss/rss.aspx?RSSSource=RSS_PUBLIC",
+        "https://www.medicinenet.com/rss/daily_health_news.xml",
+    ],
+    "health-india": [
+        "https://timesofindia.indiatimes.com/rssfeeds/3908999.cms",
+        "https://www.thehindu.com/sci-tech/health/feeder/default.rss",
+        "http://feeds.feedburner.com/ndtvnews-india-news",
+    ],
+    "health-china": [
+        "https://www.scmp.com/rss/4/feed",
+        "https://www.sixthtone.com/rss.xml",
+        "https://www.chinadailyhk.com/rss/china_news.xml",
+    ],
+    "health-europe": [
+        "https://feeds.bbci.co.uk/news/health/rss.xml",
+        "https://rss.dw.com/rdf/rss-en-all",
+        "https://www.theguardian.com/society/health/rss",
+    ],
+    "health-mideast": [
+        "https://www.aljazeera.com/xml/rss/all.xml",
+        "https://www.who.int/feeds/entity/news/en/rss.xml",
+        "https://feeds.reuters.com/reuters/MENATopNews",
+    ],
+    "environment": [
+        "https://feeds.bbci.co.uk/news/science_and_environment/rss.xml",
+        "https://rss.nytimes.com/services/xml/rss/nyt/Climate.xml",
+        "https://www.theguardian.com/environment/rss",
+        "https://grist.org/feed/",
+        "https://insideclimatenews.org/feed/",
+        "https://www.carbonbrief.org/feed",
+        "https://e360.yale.edu/feed",
+        "https://www.climatechangenews.com/feed/",
+    ],
+    "environment-usa": [
+        "https://rss.nytimes.com/services/xml/rss/nyt/Climate.xml",
+        "https://grist.org/feed/",
+        "https://insideclimatenews.org/feed/",
+        "https://www.eenews.net/rss/rss.xml",
+        "https://www.carbonbrief.org/feed",
+    ],
+    "environment-india": [
+        "https://www.thehindu.com/sci-tech/energy-and-environment/feeder/default.rss",
+        "https://timesofindia.indiatimes.com/rssfeedstopstories.cms",
+        "https://www.downtoearth.org.in/rss/latest-news",
+    ],
+    "environment-china": [
+        "https://www.scmp.com/rss/36/feed",
+        "https://www.sixthtone.com/rss.xml",
+        "https://www.chinadialogue.net/feed/",
+    ],
+    "environment-europe": [
+        "https://feeds.bbci.co.uk/news/science_and_environment/rss.xml",
+        "https://www.theguardian.com/environment/rss",
+        "https://www.climatechangenews.com/feed/",
+        "https://www.euractiv.com/section/energy-environment/feed/",
+    ],
+    "environment-mideast": [
+        "https://www.aljazeera.com/xml/rss/all.xml",
+        "https://feeds.reuters.com/reuters/MENATopNews",
+        "https://www.climatechangenews.com/feed/",
+    ],
 }
 
 
