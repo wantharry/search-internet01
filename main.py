@@ -177,10 +177,10 @@ async def stream_search(req: SearchRequest) -> AsyncGenerator[str, None]:
         for coro in asyncio.as_completed(tasks):
             result = await coro
             done_count += 1
-            # Send result without raw content (too large)
             yield evt({
                 "type": "result",
                 "result": {k: v for k, v in result.items() if k != "content"},
+                "content_text": result.get("content", ""),
                 "progress": f"{done_count}/{total}",
             })
 
