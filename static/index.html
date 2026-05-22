@@ -1090,6 +1090,59 @@
     .alert-title      { font-size: 16px; }
     header h1         { font-size: 20px; }
   }
+
+  /* ── Light theme overrides ── */
+  [data-theme="light"] header {
+    background: rgba(255,255,255,.95);
+    border-bottom-color: #d8d8d8;
+    box-shadow: 0 1px 8px rgba(0,0,0,.08);
+  }
+  [data-theme="light"] .live-card,
+  [data-theme="light"] .search-card {
+    box-shadow: 0 2px 10px rgba(0,0,0,.08);
+  }
+  [data-theme="light"] .live-card:hover {
+    box-shadow: 0 6px 24px rgba(0,0,0,.14);
+    border-color: rgba(0,0,0,.2);
+  }
+  [data-theme="light"] .live-ai-summary {
+    background: rgba(0,0,0,.04);
+  }
+  [data-theme="light"] .live-summarize-btn {
+    background: linear-gradient(var(--surface2),var(--surface2)) padding-box,
+                linear-gradient(135deg,#333,#666,#333) border-box;
+    color: #333;
+  }
+  [data-theme="light"] .live-summarize-btn:hover:not(:disabled) {
+    background: linear-gradient(135deg,#111,#333,#111) padding-box,
+                linear-gradient(135deg,#333,#666,#333) border-box;
+    color: #fff;
+  }
+  [data-theme="light"] .nav-tab.active {
+    color: #111;
+    border-bottom-color: #111;
+    text-shadow: none;
+  }
+  [data-theme="light"] .live-sel,
+  [data-theme="light"] .theme-sel {
+    background-color: #fff;
+    color: #111;
+    border-color: #ccc;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%23555' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  }
+  [data-theme="light"] .alert-card.unread {
+    background: rgba(0,0,0,.04);
+  }
+  [data-theme="light"] .alert-card.unread::before {
+    background: #111;
+  }
+  [data-theme="light"] .live-refresh-btn {
+    background: #fff;
+    border-color: #ccc;
+    color: #333;
+  }
+  [data-theme="light"] ::-webkit-scrollbar-track { background: #f0f0f0; }
+  [data-theme="light"] ::-webkit-scrollbar-thumb { background: #ccc; }
 </style>
 </head>
 <body>
@@ -1097,9 +1150,8 @@
 <header>
   <div class="logo">⚡</div>
   <h1>Pulse</h1>
-  <span class="badge">Ollama</span>
-  <span class="free-badge">100% Free</span>
   <select class="theme-sel" id="theme-select" onchange="applyTheme(this.value)" title="Switch theme">
+    <option value="light">⬜ Light</option>
     <option value="mono">⬛ Mono</option>
     <option value="cosmos">🟣 Cosmos</option>
     <option value="stellar">🔵 Stellar</option>
@@ -1923,6 +1975,23 @@
 
   // ── Themes ────────────────────────────────────────────────────────────────
   const THEMES = {
+    light: {
+      '--bg':          '#f5f5f5',
+      '--surface':     '#ffffff',
+      '--surface2':    '#ebebeb',
+      '--border':      '#d8d8d8',
+      '--primary':     '#111111',
+      '--primary-dim': 'rgba(0,0,0,.08)',
+      '--text':        '#0d0d0d',
+      '--muted':       '#555555',
+      '--teal':        '#0070c0',
+      '--green':       '#008040',
+      '--red':         '#cc2200',
+      'gradient1':     'rgba(0,0,0,.03)',
+      'gradient2':     'rgba(0,0,0,.02)',
+      'header-grad':   'linear-gradient(135deg,#111111,#444444 50%,#222222)',
+      'light': true,
+    },
     mono: {
       '--bg':          '#000000',
       '--surface':     '#0f0f0f',
@@ -2049,6 +2118,8 @@
       `radial-gradient(ellipse at 20% 0%, ${t.gradient1} 0%, transparent 60%)`,
       `radial-gradient(ellipse at 80% 100%, ${t.gradient2} 0%, transparent 60%)`,
     ].join(',');
+    // Light/dark mode class on html element
+    document.documentElement.dataset.theme = name;
     // Update header gradient title
     const h1 = document.querySelector('header h1');
     if (h1) h1.style.backgroundImage = t['header-grad'];
@@ -2063,7 +2134,7 @@
 
   // Restore on load
   (function() {
-    const saved = localStorage.getItem('ai-search-theme') || 'mono';
+    const saved = localStorage.getItem('ai-search-theme') || 'light';
     applyTheme(saved);
   })();
 </script>
