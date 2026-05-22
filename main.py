@@ -375,10 +375,10 @@ LIVE_FEEDS: dict[str, list[str]] = {
         "https://rss.nytimes.com/services/xml/rss/nyt/Europe.xml",
         "https://rss.dw.com/rdf/rss-en-all",
     ],
-    "australia": [
-        "https://www.abc.net.au/news/feed/51120/rss.xml",
-        "https://www.theguardian.com/australia-news/rss",
-        "https://feeds.smh.com.au/rssheadlines/top.xml",
+    "mideast": [
+        "https://www.aljazeera.com/xml/rss/all.xml",
+        "http://feeds.bbci.co.uk/news/world/middle_east/rss.xml",
+        "https://feeds.reuters.com/reuters/MENATopNews",
     ],
     "politics-usa": [
         "https://feeds.npr.org/1004/rss.xml",
@@ -400,9 +400,10 @@ LIVE_FEEDS: dict[str, list[str]] = {
         "https://rss.dw.com/rdf/rss-en-all",
         "https://rss.nytimes.com/services/xml/rss/nyt/Europe.xml",
     ],
-    "politics-australia": [
-        "https://www.abc.net.au/news/feed/51120/rss.xml",
-        "https://www.theguardian.com/australia-news/rss",
+    "politics-mideast": [
+        "https://www.aljazeera.com/xml/rss/all.xml",
+        "http://feeds.bbci.co.uk/news/world/middle_east/rss.xml",
+        "https://feeds.reuters.com/reuters/MENATopNews",
     ],
     "sports-usa": [
         "https://www.espn.com/espn/rss/news",
@@ -416,9 +417,9 @@ LIVE_FEEDS: dict[str, list[str]] = {
         "http://feeds.bbci.co.uk/sport/rss.xml",
         "https://www.skysports.com/rss/12040",
     ],
-    "sports-australia": [
-        "https://www.abc.net.au/news/feed/51120/rss.xml",
-        "https://www.theguardian.com/australia/sport/rss",
+    "sports-mideast": [
+        "https://www.aljazeera.com/xml/rss/all.xml",
+        "https://feeds.reuters.com/reuters/MENATopNews",
     ],
     "tech-india": [
         "https://gadgets360.com/rss/news",
@@ -448,9 +449,10 @@ LIVE_FEEDS: dict[str, list[str]] = {
     "finance-china": [
         "https://www.scmp.com/rss/92/feed",
     ],
-    "finance-australia": [
-        "https://www.theguardian.com/australia/business/rss",
-        "https://www.abc.net.au/news/feed/51120/rss.xml",
+    "finance-mideast": [
+        "https://www.aljazeera.com/xml/rss/all.xml",
+        "https://feeds.reuters.com/reuters/MENATopNews",
+        "https://feeds.a.dj.com/rss/RSSMarketsMain.xml",
     ],
     "science-usa": [
         "https://rss.nytimes.com/services/xml/rss/nyt/Science.xml",
