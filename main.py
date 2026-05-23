@@ -760,7 +760,9 @@ async def get_live_feed(category: str):
                 parsed = feedparser.parse(resp.text)
                 source = parsed.feed.get("title", url)
                 weight = _ALL_WEIGHTS.get(url, 1.5) if use_weighted else 1.0
-                topic_label = _ALL_TOPIC_LABELS.get(url, "") if use_weighted else _KEY_TOPIC_LABELS.get(key, "")
+                # For compound keys like "sports-usa", extract the topic part for the label
+                _label_key = key.split("-")[0] if "-" in key else key
+                topic_label = _ALL_TOPIC_LABELS.get(url, "") if use_weighted else _KEY_TOPIC_LABELS.get(_label_key, "")
                 items = []
                 for entry in parsed.entries[:20]:
                     snippet = entry.get("summary", "") or entry.get("description", "")
