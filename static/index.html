@@ -978,6 +978,14 @@
     transition: all .18s;
   }
   .alerts-ctrl-btn:hover { border-color: var(--primary); color: var(--text); background: var(--primary-dim); }
+  .alerts-sound-btn {
+    background: none; border: 1px solid #334155; color: #94a3b8;
+    border-radius: 20px; padding: 4px 12px; font-size: 13px; cursor: pointer;
+    transition: background .15s, border-color .15s, color .15s;
+    white-space: nowrap;
+  }
+  .alerts-sound-btn.on { border-color: #22c55e; color: #22c55e; }
+  .alerts-sound-btn:hover { border-color: var(--primary); color: var(--text); background: var(--primary-dim); }
 
   /* ── Live header controls ── */
   .live-refresh-btn {
@@ -1320,24 +1328,69 @@
   #article-search-results { margin-top: 12px; }
 
   /* ── Trending chips ── */
-  .trending-row {
-    display: none; align-items: flex-start; gap: 8px; margin-bottom: 10px;
+  /* ── Trending collapsible ── */
+  .trending-toggle-bar { margin-bottom: 6px; }
+  .trending-toggle-btn {
+    background: none; border: 1px solid var(--primary); color: var(--primary);
+    border-radius: 20px; padding: 4px 14px; font-size: 12px; font-weight: 600;
+    cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
+    transition: background .15s, color .15s, box-shadow .15s;
   }
-  .trending-row.show { display: flex; }
-  .trending-label {
-    font-size: 11px; color: var(--muted); font-weight: 700;
-    text-transform: uppercase; letter-spacing: .05em; white-space: nowrap; padding-top: 3px;
-  }
-  #trending-chips {
-    display: flex; flex-wrap: wrap; gap: 6px; flex: 1; min-width: 0;
+  .trending-toggle-btn:hover { background: rgba(99,102,241,.15); box-shadow: 0 0 0 3px rgba(99,102,241,.12); }
+  .trending-toggle-arrow { display: inline-block; font-style: normal; font-size: 10px; transition: transform .3s cubic-bezier(.4,0,.2,1); }
+  .trending-toggle-arrow.open { transform: rotate(180deg); }
+  .trending-chips-wrap { max-height: 0; overflow: hidden; transition: max-height .35s cubic-bezier(.4,0,.2,1); width: 100%; }
+  .trending-chips-wrap.open { max-height: 400px; }
+  #trending-chips, #alerts-trending-chips {
+    display: flex; flex-wrap: wrap; gap: 6px; width: 100%; padding: 8px 0 10px;
   }
   .trend-chip {
     background: var(--surface2); border: 1px solid var(--border);
-    border-radius: 20px; padding: 3px 11px; font-size: 12px;
+    border-radius: 20px; padding: 4px 12px; font-size: 12px;
     color: var(--text); cursor: pointer; white-space: nowrap;
-    transition: background .12s, border-color .12s, color .12s;
+    transition: background .15s, border-color .15s, color .15s, transform .12s;
   }
-  .trend-chip:hover { background: var(--primary); border-color: var(--primary); color: #fff; }
+  .trend-chip:hover { background: var(--primary); border-color: var(--primary); color: #fff; transform: scale(1.05); }
+  .trend-chip:active { transform: scale(0.96); }
+
+  /* ── AI Summary card ── */
+  .ai-summary-card {
+    background: linear-gradient(135deg,rgba(99,102,241,.09) 0%,rgba(139,92,246,.06) 100%);
+    border: 1px solid rgba(99,102,241,.28); border-radius: 12px;
+    padding: 14px 16px; margin-bottom: 14px;
+    animation: fadeInUp .3s ease;
+  }
+  @keyframes fadeInUp { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+  .ai-summary-header {
+    display: flex; align-items: center; gap: 7px; margin-bottom: 10px;
+    font-size: 11px; font-weight: 700; color: var(--primary);
+    text-transform: uppercase; letter-spacing: .07em;
+  }
+  .ai-summary-text { font-size: 14px; line-height: 1.65; color: var(--text); white-space: pre-wrap; }
+  .ai-cursor { display: inline-block; animation: blink .7s step-end infinite; }
+  @keyframes blink { 50% { opacity:0; } }
+  .ai-summary-widgets {
+    display: flex; flex-wrap: wrap; gap: 6px;
+    margin-top: 12px; padding-top: 10px; border-top: 1px solid rgba(99,102,241,.18);
+  }
+  .ai-widgets-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing:.05em; width:100%; margin-bottom:2px; }
+  .ai-chip {
+    background: rgba(99,102,241,.12); border: 1px solid rgba(99,102,241,.28);
+    border-radius: 16px; padding: 3px 11px; font-size: 12px; color: var(--primary);
+    cursor: pointer; white-space: nowrap; transition: background .15s, color .15s, transform .1s;
+  }
+  .ai-chip:hover { background: var(--primary); color: #fff; transform: scale(1.04); }
+  .ai-chip:active { transform: scale(0.95); }
+  .ai-chip.entity { background: rgba(16,185,129,.1); border-color: rgba(16,185,129,.3); color: #10b981; }
+  .ai-chip.entity:hover { background: #10b981; color: #fff; }
+  .ai-loading-pulse {
+    display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 13px; padding: 4px 0;
+  }
+  .ai-loading-pulse::before {
+    content: ''; flex-shrink:0; width: 14px; height: 14px;
+    border: 2px solid var(--primary); border-top-color: transparent;
+    border-radius: 50%; animation: spin .7s linear infinite;
+  }
 
   /* ── Read/unread ── */
   .live-card.read .live-card-title a { color: var(--muted); }
@@ -1463,8 +1516,12 @@
       <button class="article-search-clear" id="article-search-clear" onclick="clearArticleSearch()">✕</button>
       <div class="search-history-dropdown" id="search-history-dropdown"></div>
     </div>
-    <div class="trending-row" id="trending-row">
-      <span class="trending-label">🔥 Trending</span>
+    <div class="trending-toggle-bar" id="trending-toggle-bar" style="display:none">
+      <button class="trending-toggle-btn" onclick="toggleTrendingRow('trending')">
+        🔥 Trending <span class="trending-toggle-arrow" id="trending-toggle-arrow">▾</span>
+      </button>
+    </div>
+    <div class="trending-chips-wrap" id="trending-chips-wrap">
       <div id="trending-chips"></div>
     </div>
     <div id="article-search-results"></div>
@@ -1479,10 +1536,27 @@
       <div class="alerts-toolbar-left">
         <button class="alerts-ctrl-btn" onclick="markAllRead()">✓ Mark all read</button>
         <button class="alerts-ctrl-btn" onclick="clearAlerts()">🗑 Clear all</button>
+        <button class="alerts-sound-btn" id="alerts-sound-btn" onclick="toggleAlertSound()" title="Enable sound alerts">🔕 Sound off</button>
         <span class="alerts-status" id="alerts-status">Starting up…</span>
       </div>
     </div>
 
+    <div class="article-search-wrap" id="alerts-search-wrap">
+      <input class="article-search-input" id="alerts-search-input"
+             placeholder="🔍 Search headlines in cache…"
+             oninput="onAlertsSearchInput(this.value)"
+             onkeydown="onAlertsSearchKey(event)" />
+      <button class="article-search-clear" id="alerts-search-clear" onclick="clearAlertsSearch()" style="display:none">✕</button>
+    </div>
+    <div class="trending-toggle-bar" id="alerts-trending-toggle-bar" style="display:none">
+      <button class="trending-toggle-btn" onclick="toggleTrendingRow('alerts-trending')">
+        🔥 Trending <span class="trending-toggle-arrow" id="alerts-trending-toggle-arrow">▾</span>
+      </button>
+    </div>
+    <div class="trending-chips-wrap" id="alerts-trending-chips-wrap">
+      <div id="alerts-trending-chips"></div>
+    </div>
+    <div id="alerts-search-results"></div>
     <div id="alerts-stack">
       <div id="alerts-empty">⏳ Seeding headlines… New alerts will pop up here.</div>
     </div>
@@ -1887,7 +1961,7 @@
     document.getElementById('nav-alerts').classList.toggle('active', isAlerts);
     document.getElementById('nav-saved').classList.toggle('active', isSaved);
     if (isLive) loadLive(computeKey());
-    if (isAlerts) markAllRead();
+    if (isAlerts) { markAllRead(); loadTrending(); }
     if (isSaved) loadSavedTab();
   }
 
@@ -2289,9 +2363,62 @@
         const stack = document.getElementById('alerts-stack');
         newItems.forEach(item => stack.insertBefore(buildAlertCard(item), stack.firstChild));
         setAlertsStatus(alertsData.length + ' items · ' + newItems.length + ' new · ' + timeAgo(now));
+        playAlertChime();
       }
     } catch(e) { /* silent */ }
   }
+
+  // ── Alert sound (Web Audio API) ──────────────────────────────────────────
+  let _alertAudioCtx = null;
+  let _alertSoundEnabled = false;
+  try { _alertSoundEnabled = localStorage.getItem('alert_sound') === '1'; } catch(e) {}
+
+  function _initAudioCtx() {
+    if (_alertAudioCtx) { if (_alertAudioCtx.state === 'suspended') _alertAudioCtx.resume(); return; }
+    try { _alertAudioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) {}
+  }
+
+  function toggleAlertSound() {
+    _initAudioCtx();
+    _alertSoundEnabled = !_alertSoundEnabled;
+    try { localStorage.setItem('alert_sound', _alertSoundEnabled ? '1' : '0'); } catch(e) {}
+    const btn = document.getElementById('alerts-sound-btn');
+    if (btn) {
+      btn.textContent = _alertSoundEnabled ? '🔔 Sound on' : '🔕 Sound off';
+      btn.classList.toggle('on', _alertSoundEnabled);
+    }
+    if (_alertSoundEnabled) playAlertChime(); // play preview chime on enable
+  }
+
+  function playAlertChime() {
+    if (!_alertSoundEnabled || !_alertAudioCtx) return;
+    try {
+      if (_alertAudioCtx.state === 'suspended') _alertAudioCtx.resume();
+      const ctx = _alertAudioCtx;
+      const now = ctx.currentTime;
+      // Two-note chime: A5 then C#6
+      [[880, now, 0.35], [1108, now + 0.18, 0.5]].forEach(([freq, start, dur]) => {
+        const osc  = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.type = 'sine';
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0, start);
+        gain.gain.linearRampToValueAtTime(0.28, start + 0.012);
+        gain.gain.exponentialRampToValueAtTime(0.001, start + dur);
+        osc.start(start); osc.stop(start + dur);
+      });
+    } catch(e) {}
+  }
+
+  // Restore sound button state on load
+  (function() {
+    const btn = document.getElementById('alerts-sound-btn');
+    if (btn && _alertSoundEnabled) {
+      btn.textContent = '🔔 Sound on';
+      btn.classList.add('on');
+    }
+  })();
 
   function startAlertsPolling() {
     clearInterval(alertsPollTimer);
@@ -2619,14 +2746,26 @@
     try {
       const data = await fetch('/trending?days=3&limit=20').then(r => r.json());
       if (!Array.isArray(data) || !data.length) return;
-      const row = document.getElementById('trending-row');
       const chips = document.getElementById('trending-chips');
-      if (!row || !chips) return;
-      chips.innerHTML = data.slice(0,16).map(d =>
+      if (!chips) return;
+      const chipsHtml = data.slice(0,16).map(d =>
         `<span class="trend-chip" onclick="doArticleSearch('${esc(d.word)}')">${esc(d.word)}</span>`
       ).join('');
-      row.classList.add('show');
+      chips.innerHTML = chipsHtml;
+      const bar = document.getElementById('trending-toggle-bar');
+      if (bar) bar.style.display = '';
+      const achips = document.getElementById('alerts-trending-chips');
+      const abar   = document.getElementById('alerts-trending-toggle-bar');
+      if (achips) achips.innerHTML = chipsHtml.replace(/doArticleSearch/g,'doAlertsArticleSearch');
+      if (abar)   abar.style.display = '';
     } catch(e) {}
+  }
+  function toggleTrendingRow(prefix) {
+    const wrap  = document.getElementById(prefix + '-chips-wrap');
+    const arrow = document.getElementById(prefix + '-toggle-arrow');
+    if (!wrap) return;
+    const isOpen = wrap.classList.toggle('open');
+    if (arrow) arrow.classList.toggle('open', isOpen);
   }
 
   // ── Article search bar ────────────────────────────────────────────────────
@@ -2691,9 +2830,72 @@
     if (res) res.innerHTML = '';
     const grid = document.getElementById('live-grid');
     if (grid) grid.style.display = '';
-    const trow = document.getElementById('trending-row');
-    if (trow) trow.classList.add('show');
+
   }
+  // ── Alerts search bar ──────────────────────────────────────────────────────────
+  let _alertsSearchTimer = null;
+  function onAlertsSearchInput(val) {
+    const clr = document.getElementById('alerts-search-clear');
+    if (clr) clr.style.display = val ? 'block' : 'none';
+    clearTimeout(_alertsSearchTimer);
+    if (!val.trim()) { clearAlertsSearchResults(); return; }
+    _alertsSearchTimer = setTimeout(() => doAlertsArticleSearch(val.trim()), 400);
+  }
+  function onAlertsSearchKey(e) {
+    const val = document.getElementById('alerts-search-input')?.value.trim();
+    if (e.key === 'Enter' && val) doAlertsArticleSearch(val);
+    else if (e.key === 'Escape') clearAlertsSearch();
+  }
+  function clearAlertsSearch() {
+    const inp = document.getElementById('alerts-search-input');
+    const clr = document.getElementById('alerts-search-clear');
+    if (inp) inp.value = '';
+    if (clr) clr.style.display = 'none';
+    clearAlertsSearchResults();
+  }
+  function clearAlertsSearchResults() {
+    const res   = document.getElementById('alerts-search-results');
+    const stack = document.getElementById('alerts-stack');
+    if (res)   res.innerHTML = '';
+    if (stack) stack.style.display = '';
+  }
+  async function doAlertsArticleSearch(q) {
+    addArtSearchHistory(q);
+    const res   = document.getElementById('alerts-search-results');
+    const stack = document.getElementById('alerts-stack');
+    const atwrap = document.getElementById('alerts-trending-chips-wrap');
+    if (stack) stack.style.display = 'none';
+    if (atwrap) atwrap.classList.remove('open');
+    if (res)   res.innerHTML = '<div class="live-loading">🔍 Searching…</div>';
+    try {
+      const data = await fetch('/search/articles?q=' + encodeURIComponent(q) + '&limit=40').then(r => r.json());
+      if (!Array.isArray(data)) { res.innerHTML = '<div class="live-loading">⚠️ Search error</div>'; return; }
+      if (!data.length) {
+        res.innerHTML = `<div class="live-loading" style="text-align:center;padding:32px">No cached articles matching <strong>"${esc(q)}"</strong>.<br><small style="color:var(--muted)">Headlines are cached as you browse Live tabs.</small></div>`;
+        return;
+      }
+      const alertsArticlesHtml = `<div style="font-size:12px;color:var(--muted);margin-bottom:10px">${data.length} result${data.length!==1?'s':''} for "<strong>${esc(q)}</strong>"</div><div class="live-grid">` +
+        data.map((item, i) => {
+          const badge = item.topic ? `<span class="live-topic-badge ${esc((item.topic||'').toLowerCase().replace(/ /g,'-'))}">${esc(item.topic)}</span>` : '';
+          const isBkm = isArticleBookmarked(item.url);
+          return `<div class="live-card" style="--i:${i}">
+            <div class="live-card-source">${esc(item.source||'')}${badge}</div>
+            <div class="live-card-title"><a href="${esc(item.url)}" target="_blank" rel="noopener" onclick="markRead('${esc(item.url)}',null)">${esc(item.title)}</a></div>
+            <div class="live-card-snippet">${esc(item.snippet||'')}</div>
+            <div class="live-card-footer">
+              <div class="live-card-actions">
+                <button class="live-action-btn${isBkm?' bookmarked':''}" id="abkm2-${i}"
+                  onclick="toggleSrchBookmark(${i},'${esc(item.url)}','${esc(item.title)}','${esc(item.snippet||'')}','${esc(item.source||'')}','${esc(item.topic||'')}','${esc(item.published||'')}','abkm2-')" title="Save">🔖</button>
+                <button class="live-action-btn" onclick="shareArticle('${esc(item.url)}','${esc(item.title)}')" title="Share">↗</button>
+              </div>
+              <span class="live-card-time">${esc(item.published||'')}</span>
+            </div></div>`;
+        }).join('') + '</div>';
+      res.innerHTML = '<div id="alerts-srch-ai"></div>' + alertsArticlesHtml;
+      loadAiSummary(q, data, document.getElementById('alerts-srch-ai'), true);
+    } catch(e) { if (res) res.innerHTML = '<div class="live-loading">⚠️ Error</div>'; }
+  }
+
   async function doArticleSearch(q) {
     const inp = document.getElementById('article-search-input');
     if (inp && inp.value !== q) inp.value = q;
@@ -2704,9 +2906,9 @@
     if (dd) dd.classList.remove('show');
     const res = document.getElementById('article-search-results');
     const grid = document.getElementById('live-grid');
-    const trow = document.getElementById('trending-row');
+    const twrap = document.getElementById('trending-chips-wrap');
     if (grid) grid.style.display = 'none';
-    if (trow) trow.classList.remove('show');
+    if (twrap) twrap.classList.remove('open');
     if (res) res.innerHTML = '<div class="live-loading">🔍 Searching…</div>';
     try {
       const data = await fetch('/search/articles?q=' + encodeURIComponent(q) + '&limit=40').then(r => r.json());
@@ -2718,7 +2920,7 @@
         res.innerHTML = `<div class="live-loading" style="text-align:center;padding:32px">No cached articles matching <strong>"${esc(q)}"</strong>.<br><small style="color:var(--muted)">Headlines are cached as you browse Live tabs.</small></div>`;
         return;
       }
-      res.innerHTML = `<div style="font-size:12px;color:var(--muted);margin-bottom:10px">${data.length} result${data.length!==1?'s':''} for "<strong>${esc(q)}</strong>"</div>
+      const articlesHtml = `<div style="font-size:12px;color:var(--muted);margin-bottom:10px">${data.length} result${data.length!==1?'s':''} for "<strong>${esc(q)}</strong>"</div>
         <div class="live-grid">` +
         data.map((item, i) => {
           const badge = item.topic
@@ -2739,10 +2941,68 @@
             </div>
           </div>`;
         }).join('') + '</div>';
+      res.innerHTML = '<div id="live-srch-ai"></div>' + articlesHtml;
+      loadAiSummary(q, data, document.getElementById('live-srch-ai'), false);
     } catch(e) {
       if (res) res.innerHTML = '<div class="live-loading">⚠️ Search failed</div>';
     }
   }
+  // ── AI Search Summary ────────────────────────────────────────────────────────────
+  async function loadAiSummary(q, articles, summaryEl, isAlerts) {
+    if (!articles || !articles.length || !summaryEl) return;
+    summaryEl.innerHTML = '<div class="ai-summary-card"><div class="ai-summary-header">✨ AI Synthesis</div><div class="ai-loading-pulse">Analyzing ' + articles.length + ' articles…</div></div>';
+    const model = document.getElementById('model-select')?.value || 'qwen3:8b';
+    let accumulated = '';
+    try {
+      const resp = await fetch('/search/ai-summary', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({q, articles: articles.slice(0,15), model})
+      });
+      const reader = resp.body.getReader();
+      const dec = new TextDecoder();
+      let buf = '';
+      while (true) {
+        const {value, done} = await reader.read();
+        if (done) break;
+        buf += dec.decode(value, {stream: true});
+        const lines = buf.split('\n');
+        buf = lines.pop() || '';
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          try {
+            const ev = JSON.parse(line.slice(6));
+            if (ev.done) { renderAiSummary(summaryEl, accumulated, q, isAlerts, true); return; }
+            if (ev.text) { accumulated += ev.text; renderAiSummary(summaryEl, accumulated, q, isAlerts, false); }
+          } catch {}
+        }
+      }
+      renderAiSummary(summaryEl, accumulated, q, isAlerts, true);
+    } catch(e) { summaryEl.innerHTML = ''; }
+  }
+
+  function renderAiSummary(el, text, q, isAlerts, final) {
+    const entityMatch = text.match(/ENTITIES:\s*(.+)/i);
+    const topicMatch  = text.match(/TOPICS:\s*(.+)/i);
+    let summaryText = text.replace(/ENTITIES:.*$/im,'').replace(/TOPICS:.*$/im,'').trim();
+    let widgetsHtml = '';
+    const searchFn = isAlerts ? 'doAlertsArticleSearch' : 'doArticleSearch';
+    const entities = entityMatch ? entityMatch[1].split(',').map(s=>s.trim()).filter(s=>s&&s.length<60) : [];
+    const topics   = topicMatch  ? topicMatch[1].split(',').map(s=>s.trim()).filter(s=>s&&s.length<60) : [];
+    if (entities.length || topics.length) {
+      const chips = [
+        ...entities.map(e=>`<span class="ai-chip entity" onclick="${searchFn}('${esc(e)}')" title="Search: ${esc(e)}">${esc(e)}</span>`),
+        ...topics.map(t=>`<span class="ai-chip" onclick="${searchFn}('${esc(t)}')" title="Search: ${esc(t)}">${esc(t)}</span>`)
+      ].join('');
+      widgetsHtml = `<div class="ai-summary-widgets"><div class="ai-widgets-label">Related</div>${chips}</div>`;
+    }
+    el.innerHTML = `<div class="ai-summary-card">
+      <div class="ai-summary-header">✨ AI Synthesis — <em style="font-weight:400;text-transform:none">${esc(q)}</em></div>
+      <div class="ai-summary-text">${esc(summaryText)}${!final?'<span class="ai-cursor">▊</span>':''}</div>
+      ${widgetsHtml}
+    </div>`;
+  }
+
   function toggleSrchBookmark(idx, url, title, snippet, source, topic, published) {
     const bookmarks = getBookmarks();
     const existing = bookmarks.findIndex(b => b.url === url);

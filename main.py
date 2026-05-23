@@ -1035,6 +1035,44 @@ async def search_articles(q: str = "", limit: int = 40, topic: str = ""):
         except Exception:
             return JSONResponse({"error": str(exc)}, status_code=500)
 
+# ── AI search summary endpoint ────────────────────────────────────────────────────────────────────────
+
+class SearchSummaryRequest(BaseModel):
+    q: str
+    articles: list[dict]
+    model: str = DEFAULT_MODEL
+
+
+@app.post("/search/ai-summary")
+async def search_ai_summary(req: SearchSummaryRequest):
+    if not req.articles:
+        return JSONResponse({"error": "No articles"}, status_code=400)
+    articles_text = "\n".join(
+        f"{i+1}. [{item.get('source', '')}] {item.get('title', '')} \u2014 {(item.get('snippet', '') or '')[:200]}"
+        for i, item in enumerate(req.articles[:15])
+    )
+    prompt = (
+        f'The user searched for: "{req.q}"\n\n'
+        f"Here are the top matching news articles:\n{articles_text}\n\n"
+        "Write a 3-4 sentence synthesis of what is currently happening on this topic. "
+        "Be factual, concise, and grounded in the articles above.\n"
+        "Then on a new line write exactly: ENTITIES: [comma-separated key people, companies, or organizations]\n"
+        "Then on a new line write exactly: TOPICS: [comma-separated related sub-topics worth exploring]\n\n"
+        "Write the synthesis immediately. No preamble or headers before it."
+    )
+
+    async def generate():
+        async for chunk in _ollama_stream(req.model, prompt):
+            yield f"data: {json.dumps({'text': chunk})}\n\n"
+        yield f"data: {json.dumps({'done': True})}\n\n"
+
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
 
 # ── Article body endpoint ────────────────────────────────────────────────────
 
