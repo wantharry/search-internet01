@@ -563,8 +563,8 @@
 
 
   /* ── Alerts tab ── */
-  #alerts-section { display: none; flex-direction: column; height: calc(100vh - 100px); overflow: hidden; }
-  #alerts-section.show { display: flex; }
+  #alerts-section { display: none; }
+  #alerts-section.show { display: block; }
   .alerts-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px 14px; border-bottom: 1px solid #1e293b; }
   .alerts-toolbar-left { display: flex; align-items: center; gap: 8px; flex: 1; flex-wrap: wrap; }
   .alerts-ctrl-btn { background: #1e293b; border: 1px solid #334155; color: #94a3b8; padding: 4px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; }
@@ -852,74 +852,99 @@
   }
 
   /* ── ALERT CARDS ── */
+  /* ── #alerts-stack grid ── */
+  #alerts-stack {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 16px;
+    padding: 4px 0 24px;
+  }
+  #alerts-empty {
+    grid-column: 1 / -1;
+    text-align: center;
+    color: var(--muted);
+    padding: 40px 0;
+    font-size: 14px;
+  }
   .alert-card {
-    background: transparent;
-    border-bottom: 1px solid rgba(30,42,58,.8);
-    padding: 14px 16px;
-    transition: background .2s ease;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px 20px 14px;
+    box-shadow: var(--shadow-sm);
+    transition: transform .22s ease, box-shadow .22s ease, border-color .22s ease;
     position: relative;
+    overflow: hidden;
+    animation: cardPopIn .3s cubic-bezier(.22,.68,0,1.2) both;
   }
   .alert-card.unread {
-    background: rgba(129,140,248,.05);
+    border-color: rgba(129,140,248,.35);
   }
   .alert-card.unread::before {
     content: '';
     position: absolute;
-    left: 0; top: 0; bottom: 0;
-    width: 3px;
-    background: linear-gradient(180deg, #818cf8, #06b6d4);
-    border-radius: 0 2px 2px 0;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--primary), var(--teal));
+    opacity: 1;
   }
-  .alert-card:hover { background: rgba(255,255,255,.025); }
-  .alert-dot {
-    width: 9px; height: 9px;
-    border-radius: 50%;
-    background: var(--primary);
-    box-shadow: 0 0 8px rgba(129,140,248,.6);
-    margin-top: 6px;
-    flex-shrink: 0;
-    transition: background .3s, box-shadow .3s;
+  .alert-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-md);
+    border-color: rgba(129,140,248,.4);
   }
-  .alert-card.read .alert-dot {
-    background: #2d3748;
-    box-shadow: none;
+  .alert-dot { display: none; }
+  .alert-body { width: 100%; }
+  .alert-dismiss {
+    position: absolute;
+    top: 10px; right: 12px;
+    background: none;
+    border: none;
+    color: var(--muted);
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0 4px;
+    opacity: .5;
+    transition: opacity .15s, color .15s;
+  }
+  .alert-dismiss:hover { opacity: 1; color: var(--text); }
+  .alert-meta {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 9px;
   }
   .alert-title {
     font-family: var(--font-head);
-    font-size: 15px;
-    font-weight: 600;
-    line-height: 1.4;
-    margin-bottom: 4px;
-    letter-spacing: -.005em;
+    font-size: 16.5px;
+    font-weight: 700;
+    line-height: 1.38;
+    margin-bottom: 8px;
+    letter-spacing: -.01em;
   }
   .alert-snippet {
     font-family: var(--font-body);
-    font-size: 12.5px;
-    line-height: 1.6;
-    color: #7a8fa8;
+    font-size: 13px;
+    line-height: 1.65;
+    color: var(--muted);
+    margin-bottom: 12px;
   }
-  .alert-cat {
-    font-family: var(--font-body);
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: .07em;
-    background: rgba(129,140,248,.15);
-    color: var(--primary);
-    padding: 2px 7px;
-    border-radius: 4px;
-  }
+  .alert-cat { display: none; } /* replaced by live-topic-badge */
   .alert-source {
     font-family: var(--font-body);
-    font-size: 11px;
-    color: var(--muted);
+    font-size: 10.5px;
+    font-weight: 700;
+    color: var(--teal);
+    text-transform: uppercase;
+    letter-spacing: .08em;
   }
   .alert-time {
     font-family: var(--font-body);
     font-size: 11px;
-    color: #4a5568;
-    background: var(--surface2);
-    padding: 1px 7px;
-    border-radius: 4px;
+    color: var(--muted);
+    margin-left: auto;
   }
 
   /* ── Scrollbar ── */
@@ -1930,24 +1955,42 @@
     return Math.floor(s / 86400) + 'd ago';
   }
 
+  function saveAlertRating(url, val, alertId) {
+    try {
+      const r = JSON.parse(localStorage.getItem('live_ratings') || '{}');
+      if (r[url] === val) { delete r[url]; val = 0; }
+      else r[url] = val;
+      localStorage.setItem('live_ratings', JSON.stringify(r));
+      const card = document.getElementById(alertId);
+      if (card) card.querySelectorAll('.live-star').forEach(s => {
+        s.classList.toggle('active', parseInt(s.dataset.v) <= val);
+      });
+    } catch(e) {}
+  }
+
   function buildAlertCard(item) {
     const div = document.createElement('div');
     div.className = 'alert-card ' + (item.read ? 'read' : 'unread');
     div.id = item.id;
     const catLabel = item.category.charAt(0).toUpperCase() + item.category.slice(1);
+    const catSlug  = item.category.toLowerCase().replace(/ /g, '-');
+    const rating   = getLiveRating(item.url) || 0;
+    const stars    = [1,2,3,4,5].map(v =>
+      `<span class="live-star${v <= rating ? ' active' : ''}" data-v="${v}" onclick="saveAlertRating('${esc(item.url)}',${v},'${item.id}')" title="${v} star${v>1?'s':''}">★</span>`
+    ).join('');
     div.innerHTML = `
-      <div class="alert-dot"></div>
-      <div class="alert-body">
-        <div class="alert-meta">
-          <span class="alert-cat">${esc(catLabel)}</span>
-          <span class="alert-source">${esc(item.source || '')}</span>
-          <span class="alert-time" data-ts="${item.arrivedAt}">${timeAgo(item.arrivedAt)}</span>
-        </div>
-        <div class="alert-title"><a href="${esc(item.url)}" target="_blank" rel="noopener">${esc(item.title)}</a></div>
-        <div class="alert-snippet">${esc(item.snippet || '')}</div>
-        <button class="live-summarize-btn" style="margin-top:10px" onclick="summarizeAlert('${item.id}',this)" data-title="${esc(item.title)}" data-url="${esc(item.url)}" data-snippet="${esc(item.snippet||'')}">Summarize</button>
-        <div class="live-ai-summary" id="asum-${item.id}"></div>
+      <div class="alert-meta">
+        <span class="live-topic-badge ${catSlug}">${esc(catLabel)}</span>
+        <span class="alert-source">${esc(item.source || '')}</span>
+        <span class="alert-time" data-ts="${item.arrivedAt}">${timeAgo(item.arrivedAt)}</span>
       </div>
+      <div class="alert-title"><a href="${esc(item.url)}" target="_blank" rel="noopener">${esc(item.title)}</a></div>
+      <div class="alert-snippet">${esc(item.snippet || '')}</div>
+      <div class="live-card-footer">
+        <div class="live-star-rating" title="Rate this article">${stars}</div>
+        <button class="live-summarize-btn" onclick="summarizeAlert('${item.id}',this)" data-title="${esc(item.title)}" data-url="${esc(item.url)}" data-snippet="${esc(item.snippet||'')}">✨ Summarize</button>
+      </div>
+      <div class="live-ai-summary" id="asum-${item.id}"></div>
       <button class="alert-dismiss" onclick="dismissAlert('${item.id}')" title="Dismiss">×</button>
     `;
     return div;
