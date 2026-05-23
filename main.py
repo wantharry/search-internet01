@@ -938,10 +938,8 @@ async def get_live_feed(category: str):
 
     limit = 100 if key == "all" else 50
     result = unique[:limit]
-    # Store in DB (non-blocking background task)
-    asyncio.create_task(asyncio.get_event_loop().run_in_executor(
-        None, _store_articles, result
-    ))
+    # Store in DB without blocking the response
+    threading.Thread(target=_store_articles, args=(result,), daemon=True).start()
     return JSONResponse(result)
 
 
