@@ -1289,6 +1289,97 @@
   }
   [data-theme="grey"] ::-webkit-scrollbar-track { background: #d0d0d0; }
   [data-theme="grey"] ::-webkit-scrollbar-thumb { background: #aaa; }
+
+  /* ── Article search bar ── */
+  .article-search-wrap { position: relative; margin-bottom: 10px; }
+  .article-search-input {
+    width: 100%; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 9px 36px 9px 14px;
+    color: var(--text); font-size: 14px; outline: none; transition: border-color .15s;
+  }
+  .article-search-input:focus { border-color: var(--primary); }
+  .article-search-input::placeholder { color: var(--muted); }
+  .article-search-clear {
+    position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+    background: none; border: none; color: var(--muted); cursor: pointer;
+    font-size: 16px; padding: 0; line-height: 1; display: none;
+  }
+  .search-history-dropdown {
+    position: absolute; top: 100%; left: 0; right: 0;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); box-shadow: 0 8px 24px rgba(0,0,0,.3);
+    z-index: 50; display: none; max-height: 200px; overflow-y: auto;
+  }
+  .search-history-dropdown.show { display: block; }
+  .search-hist-item {
+    padding: 9px 14px; font-size: 13px; color: var(--text); cursor: pointer;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .search-hist-item:hover { background: var(--surface2); }
+  .search-hist-item::before { content: '🕐'; font-size: 11px; opacity: 0.6; }
+  #article-search-results { margin-top: 12px; }
+
+  /* ── Trending chips ── */
+  .trending-row {
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    margin-bottom: 10px; display: none;
+  }
+  .trending-row.show { display: flex; }
+  .trending-label {
+    font-size: 11px; color: var(--muted); font-weight: 700;
+    text-transform: uppercase; letter-spacing: .05em; white-space: nowrap;
+  }
+  .trend-chip {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 20px; padding: 3px 11px; font-size: 12px;
+    color: var(--text); cursor: pointer; white-space: nowrap;
+    transition: background .12s, border-color .12s, color .12s;
+  }
+  .trend-chip:hover { background: var(--primary); border-color: var(--primary); color: #fff; }
+
+  /* ── Read/unread ── */
+  .live-card.read .live-card-title a { color: var(--muted); }
+  .live-card.read { opacity: 0.6; }
+
+  /* ── Bookmark & share action buttons ── */
+  .live-card-actions { display: flex; gap: 5px; align-items: center; }
+  .live-action-btn {
+    background: none; border: 1px solid var(--border); border-radius: 8px;
+    color: var(--muted); font-size: 12px; padding: 4px 8px; cursor: pointer;
+    transition: color .12s, border-color .12s; line-height: 1.3; white-space: nowrap;
+  }
+  .live-action-btn:hover { color: var(--text); border-color: var(--primary); }
+  .live-action-btn.bookmarked { color: #f59e0b; border-color: #f59e0b; }
+
+  /* ── Saved section ── */
+  #saved-section { display: none; }
+  #saved-section.show { display: block; }
+  .saved-toolbar {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 14px; flex-wrap: wrap;
+  }
+  .saved-toolbar-btn {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 8px; color: var(--muted); font-size: 12px;
+    padding: 6px 12px; cursor: pointer;
+  }
+  .saved-toolbar-btn:hover { color: var(--text); border-color: var(--primary); }
+  .saved-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 16px;
+  }
+  #saved-empty { grid-column: 1/-1; padding: 48px; text-align: center; color: var(--muted); font-size: 14px; }
+  #saved-count-txt { font-size: 12px; color: var(--muted); }
+
+  /* ── Toast ── */
+  .toast {
+    position: fixed; bottom: 24px; right: 24px; background: var(--surface);
+    border: 1px solid var(--border); border-radius: 10px; padding: 11px 18px;
+    font-size: 13px; color: var(--text); box-shadow: 0 8px 24px rgba(0,0,0,.3);
+    z-index: 9999; pointer-events: none; animation: toastIn .18s ease;
+  }
+  @keyframes toastIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:none; } }
+
 </style>
 </head>
 <body>
@@ -1315,6 +1406,7 @@
     <button class="nav-tab" id="nav-search" onclick="switchView('search')">🔍 Search</button>
     <button class="nav-tab active" id="nav-live" onclick="switchView('live')">📡 Live</button>
     <button class="nav-tab" id="nav-alerts" onclick="switchView('alerts')">🔔 Alerts<span class="nav-badge" id="alerts-badge"></span></button>
+    <button class="nav-tab" id="nav-saved" onclick="switchView('saved')">💾 Saved<span class="nav-badge" id="saved-badge"></span></button>
   </div>
 
   <!-- Live section -->
@@ -1359,6 +1451,21 @@
       <span id="live-countdown" class="live-countdown-txt"></span>
       <span id="live-status" class="live-status-txt">Loading…</span>
     </div>
+    <div class="article-search-wrap" id="article-search-wrap">
+      <input class="article-search-input" id="article-search-input"
+             placeholder="🔍 Search headlines in cache…"
+             oninput="onArticleSearchInput(this.value)"
+             onfocus="showSearchHistory()"
+             onblur="hideSearchHistoryDelayed()"
+             onkeydown="onArticleSearchKey(event)" />
+      <button class="article-search-clear" id="article-search-clear" onclick="clearArticleSearch()">✕</button>
+      <div class="search-history-dropdown" id="search-history-dropdown"></div>
+    </div>
+    <div class="trending-row" id="trending-row">
+      <span class="trending-label">🔥 Trending</span>
+      <div id="trending-chips"></div>
+    </div>
+    <div id="article-search-results"></div>
     <div class="live-grid" id="live-grid">
       <div class="live-loading">Loading headlines…</div>
     </div>
@@ -1378,6 +1485,16 @@
       <div id="alerts-empty">⏳ Seeding headlines… New alerts will pop up here.</div>
     </div>
   </div>
+  <div id="saved-section">
+    <div class="saved-toolbar">
+      <button class="saved-toolbar-btn" onclick="clearAllSaved()">🗑 Clear all saved</button>
+      <span id="saved-count-txt"></span>
+    </div>
+    <div class="saved-grid" id="saved-grid">
+      <div id="saved-empty">💾 No saved articles yet. Click 🔖 on any live card to save it.</div>
+    </div>
+  </div>
+
   <div id="search-section" class="hide">
 
   <!-- Search controls -->
@@ -1755,17 +1872,21 @@
   }
 
   function switchView(view) {
-    const isLive    = view === 'live';
-    const isAlerts  = view === 'alerts';
-    const isSearch  = view === 'search';
+    const isLive   = view === 'live';
+    const isAlerts = view === 'alerts';
+    const isSearch = view === 'search';
+    const isSaved  = view === 'saved';
     document.getElementById('live-section').classList.toggle('show', isLive);
     document.getElementById('search-section').classList.toggle('hide', !isSearch);
     document.getElementById('alerts-section').classList.toggle('show', isAlerts);
+    document.getElementById('saved-section').classList.toggle('show', isSaved);
     document.getElementById('nav-search').classList.toggle('active', isSearch);
     document.getElementById('nav-live').classList.toggle('active', isLive);
     document.getElementById('nav-alerts').classList.toggle('active', isAlerts);
+    document.getElementById('nav-saved').classList.toggle('active', isSaved);
     if (isLive) loadLive(computeKey());
     if (isAlerts) markAllRead();
+    if (isSaved) loadSavedTab();
   }
 
   function selectTopic(topic) {
@@ -1836,15 +1957,23 @@
         const badge = item.topic
           ? `<span class="live-topic-badge ${esc(item.topic.toLowerCase().replace(/ /g,'-'))}">${esc(item.topic)}</span>`
           : '';
+        const isRead = isArticleRead(item.url);
+        const isBkm  = isArticleBookmarked(item.url);
         return `
-        <div class="live-card" id="lc-${i}" style="--i:${i}">
+        <div class="live-card${isRead?' read':''}" id="lc-${i}" style="--i:${i}">
           <div class="live-card-source">${esc(item.source)}${badge}</div>
-          <div class="live-card-title"><a href="${esc(item.url)}" target="_blank" rel="noopener">${esc(item.title)}</a></div>
+          <div class="live-card-title"><a href="${esc(item.url)}" target="_blank" rel="noopener" onclick="markRead('${esc(item.url)}','lc-${i}')">${esc(item.title)}</a></div>
           <div class="live-card-meta">${esc(item.published)}</div>
           <div class="live-card-snippet">${esc(item.snippet)}</div>
           <div class="live-card-footer">
             <div class="live-star-rating" title="Rate this article">${stars}</div>
-            <button class="live-summarize-btn" onclick="summarizeLive(${i},this)" data-title="${esc(item.title)}" data-url="${esc(item.url)}" data-snippet="${esc(item.snippet)}">✨ Summarize</button>
+            <div class="live-card-actions">
+              <button class="live-action-btn${isBkm?' bookmarked':''}" id="bkm-${i}"
+                onclick="toggleBookmark(${i},'${esc(item.url)}','${esc(item.title)}','${esc(item.snippet)}','${esc(item.source)}','${esc(item.topic)}','${esc(item.published)}')"
+                title="${isBkm?'Remove bookmark':'Save article'}">${isBkm?'🔖':'🔖'}</button>
+              <button class="live-action-btn" onclick="shareArticle('${esc(item.url)}','${esc(item.title)}')" title="Share">⤴</button>
+              <button class="live-summarize-btn" onclick="summarizeLive(${i},this)" data-title="${esc(item.title)}" data-url="${esc(item.url)}" data-snippet="${esc(item.snippet)}">✨ Summarize</button>
+            </div>
           </div>
           <div class="live-ai-summary" id="las-${i}"></div>
         </div>`;
@@ -1891,6 +2020,8 @@
   document.addEventListener('DOMContentLoaded', () => {
     selectRegion('world');
     startAlertsPolling();
+    updateSavedBadge();
+    loadTrending();
   });
 
   async function summarizeLive(idx, btn) {
@@ -1988,7 +2119,13 @@
       <div class="alert-snippet">${esc(item.snippet || '')}</div>
       <div class="live-card-footer">
         <div class="live-star-rating" title="Rate this article">${stars}</div>
-        <button class="live-summarize-btn" onclick="summarizeAlert('${item.id}',this)" data-title="${esc(item.title)}" data-url="${esc(item.url)}" data-snippet="${esc(item.snippet||'')}">✨ Summarize</button>
+        <div class="live-card-actions">
+          <button class="live-action-btn${isArticleBookmarked(item.url)?' bookmarked':''}" id="abkm-${item.id}"
+            onclick="toggleBookmarkAlert('${item.id}','${esc(item.url)}','${esc(item.title)}','${esc(item.snippet||'')}','${esc(item.source||'')}','${esc(item.category)}','')"
+            title="Save article">🔖</button>
+          <button class="live-action-btn" onclick="shareArticle('${esc(item.url)}','${esc(item.title)}')" title="Share">⤴</button>
+          <button class="live-summarize-btn" onclick="summarizeAlert('${item.id}',this)" data-title="${esc(item.title)}" data-url="${esc(item.url)}" data-snippet="${esc(item.snippet||'')}">✨ Summarize</button>
+        </div>
       </div>
       <div class="live-ai-summary" id="asum-${item.id}"></div>
       <button class="alert-dismiss" onclick="dismissAlert('${item.id}')" title="Dismiss">×</button>
@@ -2351,6 +2488,276 @@
     const saved = localStorage.getItem('ai-search-theme') || 'grey';
     applyTheme(saved);
   })();
+
+  // ── Read / Unread tracking ────────────────────────────────────────────────
+  function isArticleRead(url) {
+    try { return JSON.parse(localStorage.getItem('read_articles')||'[]').includes(url); }
+    catch(e) { return false; }
+  }
+  function markRead(url, cardId) {
+    try {
+      const arr = JSON.parse(localStorage.getItem('read_articles')||'[]');
+      if (!arr.includes(url)) { arr.push(url); localStorage.setItem('read_articles', JSON.stringify(arr)); }
+      if (cardId) { const el = document.getElementById(cardId); if (el) el.classList.add('read'); }
+    } catch(e) {}
+  }
+
+  // ── Bookmarks ─────────────────────────────────────────────────────────────
+  const BOOKMARKS_KEY = 'pulse_bookmarks';
+  function getBookmarks() {
+    try { return JSON.parse(localStorage.getItem(BOOKMARKS_KEY)||'[]'); } catch(e) { return []; }
+  }
+  function saveBookmarks(arr) {
+    try { localStorage.setItem(BOOKMARKS_KEY, JSON.stringify(arr)); } catch(e) {}
+  }
+  function isArticleBookmarked(url) {
+    return getBookmarks().some(b => b.url === url);
+  }
+  function toggleBookmark(idx, url, title, snippet, source, topic, published) {
+    const bookmarks = getBookmarks();
+    const existing = bookmarks.findIndex(b => b.url === url);
+    const btn = document.getElementById('bkm-' + idx);
+    if (existing >= 0) {
+      bookmarks.splice(existing, 1);
+      if (btn) btn.classList.remove('bookmarked');
+      showToast('Bookmark removed');
+    } else {
+      bookmarks.unshift({ url, title, snippet, source, topic, published, savedAt: Date.now() });
+      if (btn) btn.classList.add('bookmarked');
+      showToast('💾 Saved!');
+    }
+    saveBookmarks(bookmarks);
+    updateSavedBadge();
+  }
+  function toggleBookmarkAlert(alertId, url, title, snippet, source, topic, published) {
+    const bookmarks = getBookmarks();
+    const existing = bookmarks.findIndex(b => b.url === url);
+    const btn = document.getElementById('abkm-' + alertId);
+    if (existing >= 0) {
+      bookmarks.splice(existing, 1);
+      if (btn) btn.classList.remove('bookmarked');
+      showToast('Bookmark removed');
+    } else {
+      bookmarks.unshift({ url, title, snippet, source, topic, published, savedAt: Date.now() });
+      if (btn) btn.classList.add('bookmarked');
+      showToast('💾 Saved!');
+    }
+    saveBookmarks(bookmarks);
+    updateSavedBadge();
+  }
+  function updateSavedBadge() {
+    const n = getBookmarks().length;
+    const b = document.getElementById('saved-badge');
+    if (b) { b.textContent = n > 0 ? n : ''; b.classList.toggle('show', n > 0); }
+  }
+  function clearAllSaved() {
+    saveBookmarks([]);
+    updateSavedBadge();
+    loadSavedTab();
+    showToast('🗑 All saved articles cleared');
+  }
+  function loadSavedTab() {
+    const bookmarks = getBookmarks();
+    const grid = document.getElementById('saved-grid');
+    const cnt  = document.getElementById('saved-count-txt');
+    if (cnt) cnt.textContent = bookmarks.length + ' saved article' + (bookmarks.length !== 1 ? 's' : '');
+    if (!bookmarks.length) {
+      grid.innerHTML = '<div id="saved-empty">💾 No saved articles yet. Click 🔖 on any live card.</div>';
+      return;
+    }
+    grid.innerHTML = bookmarks.map((item, i) => {
+      const badge = item.topic
+        ? `<span class="live-topic-badge ${esc((item.topic||'').toLowerCase().replace(/ /g,'-'))}">${esc(item.topic)}</span>`
+        : '';
+      return `
+      <div class="live-card" style="--i:${i}">
+        <div class="live-card-source">${esc(item.source||'')}${badge}</div>
+        <div class="live-card-title"><a href="${esc(item.url)}" target="_blank" rel="noopener">${esc(item.title)}</a></div>
+        <div class="live-card-meta">${esc(item.published||'')}</div>
+        <div class="live-card-snippet">${esc(item.snippet||'')}</div>
+        <div class="live-card-footer">
+          <div class="live-card-actions">
+            <button class="live-action-btn bookmarked" onclick="removeSavedItem('${esc(item.url)}')" title="Remove">🔖 Remove</button>
+            <button class="live-action-btn" onclick="shareArticle('${esc(item.url)}','${esc(item.title)}')" title="Share">⤴ Share</button>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+  function removeSavedItem(url) {
+    const bookmarks = getBookmarks().filter(b => b.url !== url);
+    saveBookmarks(bookmarks);
+    updateSavedBadge();
+    loadSavedTab();
+    showToast('Removed');
+  }
+
+  // ── Share ─────────────────────────────────────────────────────────────────
+  function shareArticle(url, title) {
+    if (navigator.share) {
+      navigator.share({ title: title, url: url }).catch(() => {});
+    } else {
+      navigator.clipboard.writeText(url).then(() => showToast('🔗 Link copied!'), () => showToast('⚠️ Copy failed'));
+    }
+  }
+
+  // ── Toast ─────────────────────────────────────────────────────────────────
+  let _toastTimer = null;
+  function showToast(msg) {
+    if (_toastTimer) { clearTimeout(_toastTimer); document.querySelector('.toast')?.remove(); }
+    const t = document.createElement('div');
+    t.className = 'toast';
+    t.textContent = msg;
+    document.body.appendChild(t);
+    _toastTimer = setTimeout(() => { t.style.opacity='0'; t.style.transition='opacity .3s'; setTimeout(() => t.remove(), 320); }, 2200);
+  }
+
+  // ── Trending ──────────────────────────────────────────────────────────────
+  async function loadTrending() {
+    try {
+      const data = await fetch('/trending?days=3&limit=20').then(r => r.json());
+      if (!Array.isArray(data) || !data.length) return;
+      const row = document.getElementById('trending-row');
+      const chips = document.getElementById('trending-chips');
+      if (!row || !chips) return;
+      chips.innerHTML = data.slice(0,16).map(d =>
+        `<span class="trend-chip" onclick="doArticleSearch('${esc(d.word)}')">${esc(d.word)}</span>`
+      ).join('');
+      row.classList.add('show');
+    } catch(e) {}
+  }
+
+  // ── Article search bar ────────────────────────────────────────────────────
+  const ART_HIST_KEY = 'art_search_history';
+  let _artSearchTimer = null;
+  let _histHideTimer  = null;
+
+  function getArtSearchHistory() {
+    try { return JSON.parse(localStorage.getItem(ART_HIST_KEY)||'[]'); } catch { return []; }
+  }
+  function addArtSearchHistory(q) {
+    try {
+      let h = getArtSearchHistory().filter(x => x !== q);
+      h.unshift(q);
+      localStorage.setItem(ART_HIST_KEY, JSON.stringify(h.slice(0,10)));
+    } catch {}
+  }
+  function showSearchHistory() {
+    clearTimeout(_histHideTimer);
+    const h = getArtSearchHistory();
+    const dd = document.getElementById('search-history-dropdown');
+    if (!dd || !h.length) return;
+    dd.innerHTML = h.map(q =>
+      `<div class="search-hist-item" onmousedown="doArticleSearch('${esc(q)}')">${esc(q)}</div>`
+    ).join('');
+    dd.classList.add('show');
+  }
+  function hideSearchHistoryDelayed() {
+    _histHideTimer = setTimeout(() => {
+      const dd = document.getElementById('search-history-dropdown');
+      if (dd) dd.classList.remove('show');
+    }, 200);
+  }
+  function onArticleSearchInput(val) {
+    const clr = document.getElementById('article-search-clear');
+    if (clr) clr.style.display = val ? 'block' : 'none';
+    const dd = document.getElementById('search-history-dropdown');
+    if (dd) dd.classList.remove('show');
+    clearTimeout(_artSearchTimer);
+    if (!val.trim()) { clearArticleSearchResults(); return; }
+    _artSearchTimer = setTimeout(() => doArticleSearch(val.trim()), 400);
+  }
+  function onArticleSearchKey(e) {
+    if (e.key === 'Enter') {
+      const val = document.getElementById('article-search-input')?.value.trim();
+      if (val) doArticleSearch(val);
+    } else if (e.key === 'Escape') {
+      clearArticleSearch();
+    }
+  }
+  function clearArticleSearch() {
+    const inp = document.getElementById('article-search-input');
+    const clr = document.getElementById('article-search-clear');
+    if (inp) inp.value = '';
+    if (clr) clr.style.display = 'none';
+    const dd = document.getElementById('search-history-dropdown');
+    if (dd) dd.classList.remove('show');
+    clearArticleSearchResults();
+  }
+  function clearArticleSearchResults() {
+    const res = document.getElementById('article-search-results');
+    if (res) res.innerHTML = '';
+    const grid = document.getElementById('live-grid');
+    if (grid) grid.style.display = '';
+    const trow = document.getElementById('trending-row');
+    if (trow) trow.classList.add('show');
+  }
+  async function doArticleSearch(q) {
+    const inp = document.getElementById('article-search-input');
+    if (inp && inp.value !== q) inp.value = q;
+    const clr = document.getElementById('article-search-clear');
+    if (clr) clr.style.display = 'block';
+    addArtSearchHistory(q);
+    const dd = document.getElementById('search-history-dropdown');
+    if (dd) dd.classList.remove('show');
+    const res = document.getElementById('article-search-results');
+    const grid = document.getElementById('live-grid');
+    const trow = document.getElementById('trending-row');
+    if (grid) grid.style.display = 'none';
+    if (trow) trow.classList.remove('show');
+    if (res) res.innerHTML = '<div class="live-loading">🔍 Searching…</div>';
+    try {
+      const data = await fetch('/search/articles?q=' + encodeURIComponent(q) + '&limit=40').then(r => r.json());
+      if (!Array.isArray(data)) {
+        res.innerHTML = '<div class="live-loading">⚠️ Search error</div>';
+        return;
+      }
+      if (!data.length) {
+        res.innerHTML = `<div class="live-loading" style="text-align:center;padding:32px">No cached articles matching <strong>"${esc(q)}"</strong>.<br><small style="color:var(--muted)">Headlines are cached as you browse Live tabs.</small></div>`;
+        return;
+      }
+      res.innerHTML = `<div style="font-size:12px;color:var(--muted);margin-bottom:10px">${data.length} result${data.length!==1?'s':''} for "<strong>${esc(q)}</strong>"</div>
+        <div class="live-grid">` +
+        data.map((item, i) => {
+          const badge = item.topic
+            ? `<span class="live-topic-badge ${esc((item.topic||'').toLowerCase().replace(/ /g,'-'))}">${esc(item.topic)}</span>`
+            : '';
+          const isBkm = isArticleBookmarked(item.url);
+          return `<div class="live-card" style="--i:${i}">
+            <div class="live-card-source">${esc(item.source||'')}${badge}</div>
+            <div class="live-card-title"><a href="${esc(item.url)}" target="_blank" rel="noopener" onclick="markRead('${esc(item.url)}',null)">${esc(item.title)}</a></div>
+            <div class="live-card-snippet">${esc(item.snippet||'')}</div>
+            <div class="live-card-footer">
+              <div class="live-card-actions">
+                <button class="live-action-btn${isBkm?' bookmarked':''}" id="sbkm-${i}"
+                  onclick="toggleSrchBookmark(${i},'${esc(item.url)}','${esc(item.title)}','${esc(item.snippet||'')}','${esc(item.source||'')}','${esc(item.topic||'')}','')"
+                  title="Save">🔖</button>
+                <button class="live-action-btn" onclick="shareArticle('${esc(item.url)}','${esc(item.title)}')" title="Share">⤴</button>
+              </div>
+            </div>
+          </div>`;
+        }).join('') + '</div>';
+    } catch(e) {
+      if (res) res.innerHTML = '<div class="live-loading">⚠️ Search failed</div>';
+    }
+  }
+  function toggleSrchBookmark(idx, url, title, snippet, source, topic, published) {
+    const bookmarks = getBookmarks();
+    const existing = bookmarks.findIndex(b => b.url === url);
+    const btn = document.getElementById('sbkm-' + idx);
+    if (existing >= 0) {
+      bookmarks.splice(existing, 1);
+      if (btn) btn.classList.remove('bookmarked');
+      showToast('Bookmark removed');
+    } else {
+      bookmarks.unshift({ url, title, snippet, source, topic, published, savedAt: Date.now() });
+      if (btn) btn.classList.add('bookmarked');
+      showToast('💾 Saved!');
+    }
+    saveBookmarks(bookmarks);
+    updateSavedBadge();
+  }
+
 </script>
 </body>
 </html>

@@ -2,6 +2,9 @@ import asyncio
 import json
 import os
 import re
+import sqlite3
+import threading
+import time as _time_mod
 from concurrent.futures import ThreadPoolExecutor
 from typing import AsyncGenerator
 
@@ -19,7 +22,125 @@ load_dotenv()
 OLLAMA_BASE = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
 DEFAULT_MODEL = os.environ.get("OLLAMA_MODEL", "qwen3:8b")
 
+
+# ── Article DB ───────────────────────────────────────────────────────────────
+DB_PATH = os.path.join(os.path.dirname(__file__), "articles.db")
+_db_lock = threading.Lock()
+
+
+def _init_db() -> None:
+    """Create SQLite tables and FTS5 index (idempotent)."""
+    with sqlite3.connect(DB_PATH) as con:
+        con.executescript("""
+            CREATE TABLE IF NOT EXISTS articles (
+                url       TEXT PRIMARY KEY,
+                title     TEXT NOT NULL DEFAULT '',
+                snippet   TEXT DEFAULT '',
+                source    TEXT DEFAULT '',
+                topic     TEXT DEFAULT '',
+                published REAL DEFAULT 0,
+                fetched_at REAL DEFAULT 0
+            );
+            CREATE VIRTUAL TABLE IF NOT EXISTS articles_fts USING fts5(
+                title, snippet, source, topic,
+                content=articles, content_rowid=rowid
+            );
+            CREATE TRIGGER IF NOT EXISTS articles_ai AFTER INSERT ON articles BEGIN
+                INSERT INTO articles_fts(rowid,title,snippet,source,topic)
+                VALUES (new.rowid,new.title,new.snippet,new.source,new.topic);
+            END;
+            CREATE TRIGGER IF NOT EXISTS articles_ad AFTER DELETE ON articles BEGIN
+                INSERT INTO articles_fts(articles_fts,rowid,title,snippet,source,topic)
+                VALUES ('delete',old.rowid,old.title,old.snippet,old.source,old.topic);
+            END;
+        """)
+        con.commit()
+
+
+def _store_articles(items: list[dict]) -> None:
+    """Upsert articles into SQLite; prune records older than 30 days."""
+    now = _time_mod.time()
+    cutoff = now - 30 * 86400
+    with _db_lock:
+        with sqlite3.connect(DB_PATH) as con:
+            for item in items:
+                url = item.get("url", "")
+                if not url:
+                    continue
+                con.execute(
+                    "INSERT OR IGNORE INTO articles"
+                    " (url,title,snippet,source,topic,published,fetched_at)"
+                    " VALUES (?,?,?,?,?,?,?)",
+                    (
+                        url,
+                        item.get("title", "")[:500],
+                        item.get("snippet", "")[:800],
+                        item.get("source", "")[:200],
+                        item.get("topic", "")[:100],
+                        item.get("_pub_ts", 0) or 0,
+                        now,
+                    ),
+                )
+            con.execute("DELETE FROM articles WHERE fetched_at < ?", (cutoff,))
+            con.commit()
+
+
+async def _bg_feed_refresh() -> None:
+    """Background: cycle through all feed categories, refresh one every 3 min."""
+    import calendar, math as _math  # noqa: E401
+    cats = [k for k in LIVE_FEEDS if k != "all"]
+    idx = 0
+    while True:
+        await asyncio.sleep(180)
+        cat = cats[idx % len(cats)]
+        idx += 1
+        try:
+            now_ts = _time_mod.time()
+            _lk = cat.split("-")[0] if "-" in cat else cat
+            topic_label = _KEY_TOPIC_LABELS.get(_lk, "")
+            items: list[dict] = []
+            async with httpx.AsyncClient(
+                timeout=10.0,
+                headers={"User-Agent": "Mozilla/5.0 (compatible; RSSReader/1.0)"},
+                follow_redirects=True,
+            ) as client:
+                for url in LIVE_FEEDS.get(cat, []):
+                    try:
+                        resp = await client.get(url)
+                        parsed = feedparser.parse(resp.text)
+                        source = parsed.feed.get("title", url)
+                        for entry in parsed.entries[:20]:
+                            raw_snip = entry.get("summary", "") or entry.get("description", "")
+                            from bs4 import BeautifulSoup as _BS2
+                            snip = _BS2(raw_snip, "html.parser").get_text(separator=" ", strip=True)[:300]
+                            pub_ts = 0
+                            if entry.get("published_parsed"):
+                                try:
+                                    pub_ts = calendar.timegm(entry.published_parsed)
+                                except Exception:
+                                    pass
+                            items.append({
+                                "url": entry.get("link", ""),
+                                "title": entry.get("title", "").strip(),
+                                "snippet": snip,
+                                "source": source,
+                                "topic": topic_label,
+                                "_pub_ts": pub_ts,
+                            })
+                    except Exception:
+                        pass
+            if items:
+                _store_articles(items)
+        except Exception:
+            pass
+
 app = FastAPI(title="Pulse")
+
+
+@app.on_event("startup")
+async def _startup() -> None:
+    _init_db()
+    asyncio.create_task(_bg_feed_refresh())
 
 static_dir = os.path.join(os.path.dirname(__file__), "static")
 if os.path.isdir(static_dir):
@@ -816,7 +937,12 @@ async def get_live_feed(category: str):
         item.pop("_score", None)
 
     limit = 100 if key == "all" else 50
-    return JSONResponse(unique[:limit])
+    result = unique[:limit]
+    # Store in DB (non-blocking background task)
+    asyncio.create_task(asyncio.get_event_loop().run_in_executor(
+        None, _store_articles, result
+    ))
+    return JSONResponse(result)
 
 
 class ArticleSummarizeRequest(BaseModel):
@@ -828,11 +954,30 @@ class ArticleSummarizeRequest(BaseModel):
 
 @app.post("/live/summarize")
 async def summarize_article(req: ArticleSummarizeRequest):
-    """Stream a short AI summary of a news article headline + snippet."""
+    """Stream a short AI summary of a news article. Fetches full body if snippet is short."""
+    body_text = req.snippet
+    # Try to get full article body for richer summaries
+    if req.url:
+        try:
+            async with httpx.AsyncClient(
+                timeout=12.0,
+                headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"},
+                follow_redirects=True,
+            ) as _cl:
+                _resp = await _cl.get(req.url)
+                _soup = BeautifulSoup(_resp.text, "html.parser")
+                for _tag in _soup(["script","style","nav","footer","header","aside","form","iframe","noscript"]):
+                    _tag.decompose()
+                _article = _soup.find("article") or _soup.find("main") or _soup
+                _full = " ".join(_article.get_text(separator=" ", strip=True).split())
+                if len(_full) > 200:
+                    body_text = _full[:5000]
+        except Exception:
+            pass
     prompt = (
         f"Summarize this news article in 3-4 sentences. Be factual and concise.\n\n"
         f"Title: {req.title}\n"
-        f"Snippet: {req.snippet}\n\n"
+        f"Article content: {body_text}\n\n"
         f"Write the summary immediately. No preamble."
     )
 
@@ -846,6 +991,112 @@ async def summarize_article(req: ArticleSummarizeRequest):
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
+
+
+# ── Article search endpoint ──────────────────────────────────────────────────
+
+@app.get("/search/articles")
+async def search_articles(q: str = "", limit: int = 40, topic: str = ""):
+    """Full-text search over locally cached articles (SQLite FTS5)."""
+    q = q.strip()
+    if not q:
+        return JSONResponse([])
+    try:
+        with sqlite3.connect(DB_PATH) as con:
+            con.row_factory = sqlite3.Row
+            if topic:
+                rows = con.execute(
+                    "SELECT a.url,a.title,a.snippet,a.source,a.topic,a.published"
+                    " FROM articles a JOIN articles_fts f ON a.rowid=f.rowid"
+                    " WHERE articles_fts MATCH ? AND a.topic=?"
+                    " ORDER BY rank LIMIT ?",
+                    (q, topic, limit),
+                ).fetchall()
+            else:
+                rows = con.execute(
+                    "SELECT a.url,a.title,a.snippet,a.source,a.topic,a.published"
+                    " FROM articles a JOIN articles_fts f ON a.rowid=f.rowid"
+                    " WHERE articles_fts MATCH ?"
+                    " ORDER BY rank LIMIT ?",
+                    (q, limit),
+                ).fetchall()
+            return JSONResponse([dict(r) for r in rows])
+    except Exception as exc:
+        # FTS syntax errors → fallback to LIKE
+        try:
+            with sqlite3.connect(DB_PATH) as con2:
+                con2.row_factory = sqlite3.Row
+                pat = f"%{q}%"
+                rows2 = con2.execute(
+                    "SELECT url,title,snippet,source,topic,published FROM articles"
+                    " WHERE title LIKE ? OR snippet LIKE ?"
+                    " ORDER BY fetched_at DESC LIMIT ?",
+                    (pat, pat, limit),
+                ).fetchall()
+                return JSONResponse([dict(r) for r in rows2])
+        except Exception:
+            return JSONResponse({"error": str(exc)}, status_code=500)
+
+
+# ── Article body endpoint ────────────────────────────────────────────────────
+
+@app.get("/article/body")
+async def get_article_body(url: str):
+    """Fetch and extract full article body text for richer AI summaries."""
+    if not url.startswith(("http://", "https://")):
+        return JSONResponse({"error": "Invalid URL"}, status_code=400)
+    try:
+        async with httpx.AsyncClient(
+            timeout=15.0,
+            headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"},
+            follow_redirects=True,
+        ) as client:
+            resp = await client.get(url)
+            soup = BeautifulSoup(resp.text, "html.parser")
+            for tag in soup(["script","style","nav","footer","header","aside","form","iframe","noscript"]):
+                tag.decompose()
+            article = soup.find("article") or soup.find("main") or soup
+            text = " ".join(article.get_text(separator=" ", strip=True).split())
+            return JSONResponse({"text": text[:6000], "length": len(text)})
+    except Exception as exc:
+        return JSONResponse({"error": str(exc)}, status_code=500)
+
+
+# ── Trending keywords endpoint ───────────────────────────────────────────────
+
+@app.get("/trending")
+async def get_trending(days: int = 3, limit: int = 25):
+    """Return top keywords from recently cached articles."""
+    import collections
+
+    STOPWORDS = {
+        "the","a","an","is","are","was","were","be","been","being","have","has","had",
+        "do","does","did","will","would","could","should","may","might","can","to","of",
+        "in","for","on","with","at","by","from","up","as","into","and","but","or","nor",
+        "not","no","this","that","these","those","i","me","my","we","our","you","your",
+        "he","she","it","they","them","his","her","its","their","about","all","more",
+        "new","say","says","said","after","first","also","there","who","which","what",
+        "how","when","where","over","than","then","now","so","if","one","two","three",
+        "just","been","some","many","most","other","its","its","amid","amid","after",
+        "before","during","while","than","though","since","news","report","reports",
+    }
+    cutoff = _time_mod.time() - days * 86400
+    try:
+        with sqlite3.connect(DB_PATH) as con:
+            rows = con.execute(
+                "SELECT title || ' ' || snippet FROM articles WHERE fetched_at > ? LIMIT 3000",
+                (cutoff,),
+            ).fetchall()
+        word_counts: collections.Counter = collections.Counter()
+        for (text,) in rows:
+            for w in re.findall(r"[A-Z][a-z]{2,}(?:[A-Z][a-z]+)*|[A-Z]{2,}", text):
+                if w.lower() not in STOPWORDS and len(w) >= 4:
+                    word_counts[w] += 1
+        top = [{"word": w, "count": c} for w, c in word_counts.most_common(limit)]
+        return JSONResponse(top)
+    except Exception as exc:
+        return JSONResponse({"error": str(exc)}, status_code=500)
+
 
 if __name__ == "__main__":
     import uvicorn
