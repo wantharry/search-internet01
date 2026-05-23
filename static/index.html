@@ -1321,13 +1321,15 @@
 
   /* ── Trending chips ── */
   .trending-row {
-    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
-    margin-bottom: 10px; display: none;
+    display: none; align-items: flex-start; gap: 8px; margin-bottom: 10px;
   }
   .trending-row.show { display: flex; }
   .trending-label {
     font-size: 11px; color: var(--muted); font-weight: 700;
-    text-transform: uppercase; letter-spacing: .05em; white-space: nowrap;
+    text-transform: uppercase; letter-spacing: .05em; white-space: nowrap; padding-top: 3px;
+  }
+  #trending-chips {
+    display: flex; flex-wrap: wrap; gap: 6px; flex: 1; min-width: 0;
   }
   .trend-chip {
     background: var(--surface2); border: 1px solid var(--border);
