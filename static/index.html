@@ -538,6 +538,33 @@
   }
   .live-summarize-btn:hover { border-color: var(--primary); color: var(--primary); }
   .live-summarize-btn:disabled { opacity: .5; cursor: default; }
+  /* TTS */
+  .live-tts-btn {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 13px;
+    padding: 4px 9px;
+    transition: border-color 0.15s, color 0.15s;
+    white-space: nowrap;
+  }
+  .live-tts-btn:hover { border-color: var(--primary); color: var(--primary); }
+  .live-tts-btn.speaking { border-color: #f59e0b; color: #f59e0b; animation: tts-pulse 1.2s ease-in-out infinite; }
+  @keyframes tts-pulse { 0%,100%{opacity:1} 50%{opacity:.55} }
+  #tts-voice-select {
+    font-size: 11px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 6px;
+    padding: 3px 6px;
+    cursor: pointer;
+    max-width: 150px;
+    display: none;
+  }
+  #tts-voice-select.active { display: inline-block; }
   .live-ai-summary {
     background: var(--surface2);
     border-left: 3px solid var(--primary);
@@ -634,11 +661,11 @@
 
   /* ── Header ── */
   header {
-    background: rgba(14,17,23,.92);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    border-bottom: 1px solid var(--border);
-    box-shadow: 0 1px 0 rgba(129,140,248,.1);
+    background: rgba(14,17,23,.94);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-bottom: 1px solid rgba(124,109,250,.25);
+    box-shadow: 0 1px 0 rgba(124,109,250,.15), 0 4px 24px rgba(0,0,0,.3);
   }
   header h1 {
     font-family: var(--font-head);
@@ -656,18 +683,61 @@
     border-radius: 10px;
   }
 
-  /* ── Nav tabs ── */
+  /* ── Nav tabs (pill island) ── */
+  .top-nav {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 24px;
+    background: rgba(255,255,255,.03);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(124,109,250,.22);
+    border-radius: 20px;
+    padding: 5px;
+    border-bottom: none;
+    box-shadow: 0 4px 28px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.07);
+  }
   .nav-tab {
     font-family: var(--font-body);
-    font-size: 13.5px;
+    font-size: 13px;
     font-weight: 600;
-    padding: 11px 20px;
-    letter-spacing: .01em;
+    padding: 9px 0;
+    letter-spacing: .02em;
+    flex: 1;
+    text-align: center;
+    border-radius: 15px;
+    border: none !important;
+    margin-bottom: 0 !important;
+    background: none;
+    color: var(--muted);
+    transition: color .2s, background .25s, box-shadow .25s, transform .18s;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+  }
+  .tab-icon {
+    font-size: 19px;
+    line-height: 1.2;
+  }
+  .tab-label {
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: .03em;
+    white-space: nowrap;
+  }
+  .nav-tab:hover:not(.active) {
+    color: var(--text);
+    background: rgba(255,255,255,.07);
+    transform: translateY(-1px);
   }
   .nav-tab.active {
-    color: var(--primary);
-    border-bottom-color: var(--primary);
-    text-shadow: 0 0 20px rgba(129,140,248,.5);
+    color: #fff !important;
+    background: linear-gradient(135deg, #7c6dfa 0%, #a78bfa 100%);
+    box-shadow: 0 0 22px rgba(124,109,250,.55), 0 3px 12px rgba(0,0,0,.4);
+    text-shadow: 0 1px 4px rgba(0,0,0,.25);
+    border-bottom-color: transparent !important;
+    transform: translateY(-1px);
   }
 
   /* ── Category pills ── */
@@ -1137,6 +1207,32 @@
     color: var(--muted);
     opacity: .8;
   }
+  #live-pause-pill {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(20, 20, 30, 0.93);
+    color: #e0e0e8;
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 999px;
+    padding: 9px 20px;
+    font-size: 13px;
+    cursor: pointer;
+    display: none;
+    z-index: 9999;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    box-shadow: 0 4px 24px rgba(0,0,0,0.35);
+    white-space: nowrap;
+    align-items: center;
+    gap: 6px;
+    user-select: none;
+    transition: opacity 0.25s;
+  }
+  #live-pause-pill.visible { display: flex; }
+  #live-pause-pill .pill-timer { font-variant-numeric: tabular-nums; font-weight: 600; }
+  #live-pause-pill .pill-hint  { opacity: 0.65; font-size: 11px; }
   .live-status-txt {
     font-size: 12px;
     color: var(--muted);
@@ -1353,6 +1449,64 @@
   .trend-chip:hover { background: var(--primary); border-color: var(--primary); color: #fff; transform: scale(1.05); }
   .trend-chip:active { transform: scale(0.96); }
 
+  /* ── Digest tab ── */
+  #digest-section { display: none; }
+  #digest-section.show { display: block; }
+  .digest-controls { padding: 10px 12px 6px; }
+  .digest-time-row { display: flex; gap: 5px; flex-wrap: wrap; }
+  .digest-time-btn {
+    padding: 5px 11px; border-radius: 20px; border: 1px solid var(--border);
+    background: transparent; color: var(--muted); font-size: 12px; font-weight: 600;
+    cursor: pointer; transition: background .15s, color .15s, border-color .15s;
+  }
+  .digest-time-btn.active {
+    background: linear-gradient(135deg, #7c6dfa 0%, #a78bfa 100%);
+    border-color: transparent; color: #fff;
+  }
+  .digest-time-btn:hover:not(.active) { background: rgba(124,109,250,.15); color: var(--text); border-color: rgba(124,109,250,.4); }
+  .digest-gap-warning {
+    margin-top: 8px; padding: 8px 12px; border-radius: 8px;
+    background: rgba(251,146,60,.12); border: 1px solid rgba(251,146,60,.35);
+    color: #fb923c; font-size: 12px; line-height: 1.5;
+  }
+  .digest-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 10px 12px 20px; }
+  @media (max-width: 520px) { .digest-grid { grid-template-columns: 1fr; } }
+  @media (min-width: 900px) { .digest-grid { grid-template-columns: 1fr 1fr 1fr; } }
+  .digest-topic-card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+    overflow: hidden; transition: border-color .2s;
+  }
+  .digest-topic-card:hover { border-color: rgba(124,109,250,.45); }
+  .digest-card-header {
+    display: flex; align-items: center; gap: 7px; padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(124,109,250,.05);
+  }
+  .digest-topic-icon { font-size: 16px; }
+  .digest-topic-name { flex: 1; font-size: 13px; font-weight: 700; }
+  .digest-article-count {
+    font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 10px;
+    background: rgba(124,109,250,.15); color: var(--primary);
+  }
+  .digest-card-body { padding: 10px 12px; min-height: 48px; }
+  .digest-gen-btn, .digest-regen-btn {
+    display: inline-block; padding: 6px 14px; border-radius: 8px; border: none;
+    background: linear-gradient(135deg, #7c6dfa, #a78bfa); color: #fff;
+    font-size: 12px; font-weight: 600; cursor: pointer; transition: opacity .15s;
+  }
+  .digest-gen-btn:hover, .digest-regen-btn:hover { opacity: .85; }
+  .digest-regen-btn { background: rgba(124,109,250,.15); color: var(--primary); margin-top: 8px; font-size: 11px; }
+  .digest-no-data { color: var(--muted); font-size: 12px; font-style: italic; }
+  .digest-loading { grid-column: 1/-1; text-align: center; color: var(--muted); padding: 30px; }
+  .digest-generating { color: var(--muted); font-size: 12px; display: flex; align-items: center; gap: 6px; }
+  .digest-summary-text { font-size: 13px; line-height: 1.65; color: var(--text); white-space: pre-wrap; }
+  .digest-key-points {
+    margin: 10px 0 4px 0; padding: 8px 10px 8px 22px;
+    background: rgba(124,109,250,.07); border-radius: 8px;
+    border-left: 3px solid rgba(124,109,250,.5); font-size: 12px; line-height: 1.7;
+  }
+  .digest-key-points li { margin-bottom: 2px; color: var(--text); }
+
   /* ── AI Summary card ── */
   .ai-summary-card {
     background: linear-gradient(135deg,rgba(99,102,241,.09) 0%,rgba(139,92,246,.06) 100%);
@@ -1395,6 +1549,80 @@
   /* ── Read/unread ── */
   .live-card.read .live-card-title a { color: var(--muted); }
   .live-card.read { opacity: 0.6; }
+
+  /* ── Importance indicators ── */
+  .live-card.breaking {
+    border-left: 3px solid #ef4444;
+    box-shadow: -3px 0 16px rgba(239,68,68,.18), 0 2px 14px rgba(0,0,0,.45);
+  }
+  .live-card.high {
+    border-left: 3px solid #f97316;
+    box-shadow: -3px 0 10px rgba(249,115,22,.13), 0 2px 14px rgba(0,0,0,.4);
+  }
+  .alert-card.breaking {
+    border-left: 3px solid #ef4444;
+    box-shadow: -3px 0 16px rgba(239,68,68,.18);
+  }
+  .alert-card.high {
+    border-left: 3px solid #f97316;
+    box-shadow: -3px 0 10px rgba(249,115,22,.13);
+  }
+  .imp-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: .07em;
+    padding: 2px 6px;
+    border-radius: 4px;
+    text-transform: uppercase;
+    margin-right: 5px;
+    vertical-align: middle;
+  }
+  .imp-badge.breaking {
+    background: #450a0a;
+    color: #fca5a5;
+    border: 1px solid #dc2626;
+    animation: imp-pulse 1.4s ease-in-out infinite;
+  }
+  .imp-badge.high {
+    background: #431407;
+    color: #fdba74;
+    border: 1px solid #ea580c;
+  }
+  @keyframes imp-pulse {
+    0%, 100% { opacity: 1; box-shadow: 0 0 4px rgba(239,68,68,.4); }
+    50% { opacity: 0.75; box-shadow: 0 0 10px rgba(239,68,68,.7); }
+  }
+
+  /* ── New-articles banner ── */
+  .new-articles-banner {
+    position: sticky;
+    top: 8px;
+    z-index: 20;
+    display: flex;
+    justify-content: center;
+    margin-bottom: 12px;
+  }
+  .new-articles-btn {
+    background: linear-gradient(135deg, #7c6dfa, #a78bfa);
+    color: #fff;
+    border: none;
+    border-radius: 20px;
+    padding: 8px 20px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 4px 18px rgba(124,109,250,.5);
+    animation: slide-down .3s ease;
+    letter-spacing: .02em;
+  }
+  .new-articles-btn:hover { filter: brightness(1.1); }
+  @keyframes slide-down {
+    from { opacity: 0; transform: translateY(-12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
 
   /* ── Bookmark & share action buttons ── */
   .live-card-actions { display: flex; gap: 5px; align-items: center; }
@@ -1458,10 +1686,11 @@
 <main>
   <!-- Top nav -->
   <div class="top-nav">
-    <button class="nav-tab" id="nav-search" onclick="switchView('search')">🔍 Search</button>
-    <button class="nav-tab active" id="nav-live" onclick="switchView('live')">📡 Live</button>
-    <button class="nav-tab" id="nav-alerts" onclick="switchView('alerts')">🔔 Alerts<span class="nav-badge" id="alerts-badge"></span></button>
-    <button class="nav-tab" id="nav-saved" onclick="switchView('saved')">💾 Saved<span class="nav-badge" id="saved-badge"></span></button>
+    <button class="nav-tab" id="nav-search" onclick="switchView('search')"><span class="tab-icon">🔍</span><span class="tab-label">Search</span></button>
+    <button class="nav-tab active" id="nav-live" onclick="switchView('live')"><span class="tab-icon">📡</span><span class="tab-label">Live</span></button>
+    <button class="nav-tab" id="nav-alerts" onclick="switchView('alerts')"><span class="tab-icon">🔔</span><span class="tab-label">Alerts<span class="nav-badge" id="alerts-badge"></span></span></button>
+    <button class="nav-tab" id="nav-saved" onclick="switchView('saved')"><span class="tab-icon">💾</span><span class="tab-label">Saved<span class="nav-badge" id="saved-badge"></span></span></button>
+    <button class="nav-tab" id="nav-digest" onclick="switchView('digest')"><span class="tab-icon">📰</span><span class="tab-label">Digest</span></button>
   </div>
 
   <!-- Live section -->
@@ -1504,6 +1733,7 @@
       </select>
       <button class="live-refresh-btn" onclick="refreshLive()">↻</button>
       <span id="live-countdown" class="live-countdown-txt"></span>
+      <select id="tts-voice-select" title="Read-aloud voice"></select>
       <span id="live-status" class="live-status-txt">Loading…</span>
     </div>
     <div class="article-search-wrap" id="article-search-wrap">
@@ -1537,6 +1767,14 @@
         <button class="alerts-ctrl-btn" onclick="markAllRead()">✓ Mark all read</button>
         <button class="alerts-ctrl-btn" onclick="clearAlerts()">🗑 Clear all</button>
         <button class="alerts-sound-btn" id="alerts-sound-btn" onclick="toggleAlertSound()" title="Enable sound alerts">🔕 Sound off</button>
+        <select class="live-sel" id="alerts-region-sel" onchange="selectAlertsRegion(this.value)" title="Filter alerts by region" style="margin-left:6px">
+          <option value="world">🌍 World</option>
+          <option value="usa" selected>🇺🇸 USA</option>
+          <option value="india">🇮🇳 India</option>
+          <option value="china">🇨🇳 China</option>
+          <option value="europe">🇪🇺 Europe</option>
+          <option value="mideast">🕌 Mid East</option>
+        </select>
         <span class="alerts-status" id="alerts-status">Starting up…</span>
       </div>
     </div>
@@ -1568,6 +1806,25 @@
     </div>
     <div class="saved-grid" id="saved-grid">
       <div id="saved-empty">💾 No saved articles yet. Click 🔖 on any live card to save it.</div>
+    </div>
+  </div>
+
+  <div id="digest-section" class="hide">
+    <div class="digest-controls">
+      <div class="digest-time-row">
+        <button class="digest-time-btn active" data-hours="1" onclick="selectDigestTime(1)">1h</button>
+        <button class="digest-time-btn" data-hours="3" onclick="selectDigestTime(3)">3h</button>
+        <button class="digest-time-btn" data-hours="6" onclick="selectDigestTime(6)">6h</button>
+        <button class="digest-time-btn" data-hours="12" onclick="selectDigestTime(12)">12h</button>
+        <button class="digest-time-btn" data-hours="24" onclick="selectDigestTime(24)">1d</button>
+        <button class="digest-time-btn" data-hours="72" onclick="selectDigestTime(72)">3d</button>
+        <button class="digest-time-btn" data-hours="240" onclick="selectDigestTime(240)">10d</button>
+        <button class="digest-time-btn" data-hours="720" onclick="selectDigestTime(720)">30d</button>
+      </div>
+      <div id="digest-gap-warning" class="digest-gap-warning" style="display:none"></div>
+    </div>
+    <div class="digest-grid" id="digest-grid">
+      <div class="digest-loading">⏳ Loading…</div>
     </div>
   </div>
 
@@ -1940,6 +2197,8 @@
   let liveRegion = 'usa';
   let liveCountdownTimer = null;
   let liveSecondsLeft = 60;
+  let liveCountdownPaused = false;
+  let _ttsActiveIdx = -1;  // index of card currently being spoken
 
   function computeKey() {
     if (liveTopic === 'world') return liveRegion === 'world' ? 'all' : liveRegion;
@@ -1952,17 +2211,21 @@
     const isAlerts = view === 'alerts';
     const isSearch = view === 'search';
     const isSaved  = view === 'saved';
+    const isDigest = view === 'digest';
     document.getElementById('live-section').classList.toggle('show', isLive);
     document.getElementById('search-section').classList.toggle('hide', !isSearch);
     document.getElementById('alerts-section').classList.toggle('show', isAlerts);
     document.getElementById('saved-section').classList.toggle('show', isSaved);
+    document.getElementById('digest-section').classList.toggle('show', isDigest);
     document.getElementById('nav-search').classList.toggle('active', isSearch);
     document.getElementById('nav-live').classList.toggle('active', isLive);
     document.getElementById('nav-alerts').classList.toggle('active', isAlerts);
     document.getElementById('nav-saved').classList.toggle('active', isSaved);
+    document.getElementById('nav-digest').classList.toggle('active', isDigest);
     if (isLive) loadLive(computeKey());
     if (isAlerts) { markAllRead(); loadTrending(); }
     if (isSaved) loadSavedTab();
+    if (isDigest) loadDigestStats();
   }
 
   function selectTopic(topic) {
@@ -1993,6 +2256,29 @@
     catch(e) { return 0; }
   }
 
+  // Returns importance tier based on title keywords (mirrors backend logic)
+  const _BREAKING_KW = new Set(['breaking','urgent','alert','emergency','attack','explosion',
+    'earthquake','tsunami','hurricane','tornado','killed','dead','shooting','crash',
+    'fire','flood','arrested','indicted','war','invasion','crisis','collapse','recall',
+    'resign','impeach','outbreak','pandemic','hostage','siege','blast','assassination',
+    'missing','wildfire','avalanche','poisoning','evacuate','evacuation','massacre']);
+  const _HIGH_KW = new Set(['major','historic','record','landmark','election','vote',
+    'court','ruling','verdict','guilty','sentenced','acquitted','agreement','deal',
+    'treaty','summit','sanction','tariff','ban','strike','inflation','rate hike',
+    'rate cut','federal reserve','lawsuit','indictment','protest','riot',
+    'investigation','scandal','breakthrough','discovery','banned']);
+  function getImportance(title) {
+    const t = (title || '').toLowerCase();
+    for (const kw of _BREAKING_KW) { if (t.includes(kw)) return 'breaking'; }
+    for (const kw of _HIGH_KW)     { if (t.includes(kw)) return 'high'; }
+    return 'normal';
+  }
+  function impBadgeHtml(imp) {
+    if (imp === 'breaking') return '<span class="imp-badge breaking">🔴 Breaking</span>';
+    if (imp === 'high')     return '<span class="imp-badge high">⚡ Top Story</span>';
+    return '';
+  }
+
   function saveLiveRating(url, val, cardIdx) {
     try {
       const r = JSON.parse(localStorage.getItem('live_ratings') || '{}');
@@ -2008,15 +2294,53 @@
     } catch(e) {}
   }
 
+  // ── Card builder (shared by cached + fresh render) ──────────────────
+  function buildLiveCardHtml(item, i) {
+    const rating = getLiveRating(item.url) || 0;
+    const stars = [1,2,3,4,5].map(v =>
+      `<span class="live-star${v <= rating ? ' active' : ''}" data-v="${v}" onclick="saveLiveRating('${esc(item.url)}',${v},${i})" title="${v} star${v>1?'s':''}">★</span>`
+    ).join('');
+    const badge = item.topic
+      ? `<span class="live-topic-badge ${esc(item.topic.toLowerCase().replace(/ /g,'-'))}">${esc(item.topic)}</span>`
+      : '';
+    const isRead = isArticleRead(item.url);
+    const isBkm  = isArticleBookmarked(item.url);
+    const imp    = item.importance || getImportance(item.title);
+    const impCls = imp !== 'normal' ? ' ' + imp : '';
+    return `
+      <div class="live-card${isRead?' read':''}${impCls}" id="lc-${i}" style="--i:${i}">
+        <div class="live-card-source">${impBadgeHtml(imp)}${esc(item.source)}${badge}</div>
+        <div class="live-card-title"><a href="${esc(item.url)}" target="_blank" rel="noopener" onclick="markRead('${esc(item.url)}','lc-${i}')">${esc(item.title)}</a></div>
+        <div class="live-card-meta">${fmtDate(item.published_ts || item.fetched_at)}</div>
+        <div class="live-card-snippet">${esc(item.snippet)}</div>
+        <div class="live-card-footer">
+          <div class="live-star-rating" title="Rate this article">${stars}</div>
+          <div class="live-card-actions">
+            <button class="live-action-btn${isBkm?' bookmarked':''}" id="bkm-${i}"
+              onclick="toggleBookmark(${i},'${esc(item.url)}','${esc(item.title)}','${esc(item.snippet)}','${esc(item.source)}','${esc(item.topic)}','${esc(item.published)}')"
+              title="${isBkm?'Remove bookmark':'Save article'}">${isBkm?'🔖':'🔖'}</button>
+            <button class="live-action-btn" onclick="shareArticle('${esc(item.url)}','${esc(item.title)}')" title="Share">⤴</button>
+            <button class="live-summarize-btn" onclick="summarizeLive(${i},this)" data-title="${esc(item.title)}" data-url="${esc(item.url)}" data-snippet="${esc(item.snippet)}">✨ Summarize</button>
+            <button class="live-tts-btn" id="tts-${i}" onclick="speakArticle(${i},'${esc(item.title)}','${esc(item.snippet)}')" title="Read aloud">🔊</button>
+          </div>
+        </div>
+        <div class="live-ai-summary" id="las-${i}"></div>
+      </div>`;
+  }
+
+  function renderLiveGrid(items, grid) {
+    grid.innerHTML = items.map((item, i) => buildLiveCardHtml(item, i)).join('');
+  }
+
   async function loadLive(cat) {
-    const grid = document.getElementById('live-grid');
+    const grid   = document.getElementById('live-grid');
     const status = document.getElementById('live-status');
     grid.innerHTML = '<div class="live-loading">⏳ Loading headlines…</div>';
-    status.textContent = 'Fetching feeds…';
+    status.textContent = 'Loading…';
     try {
       const resp = await fetch('/live/' + cat);
-      let items = await resp.json();
-      if (!items.length) {
+      let items  = await resp.json();
+      if (!Array.isArray(items) || !items.length) {
         grid.innerHTML = '<div class="live-loading">No items found.</div>';
         status.textContent = 'No results';
         return;
@@ -2025,42 +2349,14 @@
       if (sortSel && sortSel.value === 'rated') {
         items = [...items].sort((a,b) => (getLiveRating(b.url)||0) - (getLiveRating(a.url)||0));
       }
-      grid.innerHTML = items.map((item, i) => {
-        const rating = getLiveRating(item.url) || 0;
-        const stars = [1,2,3,4,5].map(v =>
-          `<span class="live-star${v <= rating ? ' active' : ''}" data-v="${v}" onclick="saveLiveRating('${esc(item.url)}',${v},${i})" title="${v} star${v>1?'s':''}">★</span>`
-        ).join('');
-        const badge = item.topic
-          ? `<span class="live-topic-badge ${esc(item.topic.toLowerCase().replace(/ /g,'-'))}">${esc(item.topic)}</span>`
-          : '';
-        const isRead = isArticleRead(item.url);
-        const isBkm  = isArticleBookmarked(item.url);
-        return `
-        <div class="live-card${isRead?' read':''}" id="lc-${i}" style="--i:${i}">
-          <div class="live-card-source">${esc(item.source)}${badge}</div>
-          <div class="live-card-title"><a href="${esc(item.url)}" target="_blank" rel="noopener" onclick="markRead('${esc(item.url)}','lc-${i}')">${esc(item.title)}</a></div>
-          <div class="live-card-meta">${esc(item.published)}</div>
-          <div class="live-card-snippet">${esc(item.snippet)}</div>
-          <div class="live-card-footer">
-            <div class="live-star-rating" title="Rate this article">${stars}</div>
-            <div class="live-card-actions">
-              <button class="live-action-btn${isBkm?' bookmarked':''}" id="bkm-${i}"
-                onclick="toggleBookmark(${i},'${esc(item.url)}','${esc(item.title)}','${esc(item.snippet)}','${esc(item.source)}','${esc(item.topic)}','${esc(item.published)}')"
-                title="${isBkm?'Remove bookmark':'Save article'}">${isBkm?'🔖':'🔖'}</button>
-              <button class="live-action-btn" onclick="shareArticle('${esc(item.url)}','${esc(item.title)}')" title="Share">⤴</button>
-              <button class="live-summarize-btn" onclick="summarizeLive(${i},this)" data-title="${esc(item.title)}" data-url="${esc(item.url)}" data-snippet="${esc(item.snippet)}">✨ Summarize</button>
-            </div>
-          </div>
-          <div class="live-ai-summary" id="las-${i}"></div>
-        </div>`;
-      }).join('');
-      const ivSecs = getIntervalSecs();
+      renderLiveGrid(items, grid);
+      const ivSecs  = getIntervalSecs();
       const ivLabel = ivSecs < 3600 ? `${ivSecs/60|0} min` : '1 hr';
       status.textContent = `${items.length} headlines · auto-refresh: ${ivLabel}`;
       startCountdown();
     } catch(e) {
       grid.innerHTML = '<div class="live-loading">⚠️ Failed to load feeds.</div>';
-      status.textContent = 'Error loading feeds';
+      status.textContent = 'Error';
     }
   }
   function getIntervalSecs() {
@@ -2072,16 +2368,103 @@
     startCountdown();
   }
 
+  // ── Text-to-Speech ──────────────────────────────────────────────────────────
+  function _initTtsVoices() {
+    if (!window.speechSynthesis) return;
+    const sel = document.getElementById('tts-voice-select');
+    if (!sel) return;
+    const voices = speechSynthesis.getVoices().filter(v => v.lang.startsWith('en'));
+    if (!voices.length) return;
+    sel.innerHTML = voices.map((v, i) =>
+      `<option value="${i}">${v.name.replace('Google ','').replace('Microsoft ','').replace(' Online (Natural)','')}</option>`
+    ).join('');
+    sel.classList.add('active');
+  }
+
+  function speakArticle(idx, title, snippet) {
+    if (!window.speechSynthesis) { alert('Your browser does not support text-to-speech.'); return; }
+    const btn = document.getElementById('tts-' + idx);
+    // Toggle off if same article
+    if (_ttsActiveIdx === idx) {
+      speechSynthesis.cancel();
+      _ttsActiveIdx = -1;
+      if (btn) { btn.textContent = '🔊'; btn.classList.remove('speaking'); }
+      return;
+    }
+    // Stop previous
+    speechSynthesis.cancel();
+    if (_ttsActiveIdx >= 0) {
+      const old = document.getElementById('tts-' + _ttsActiveIdx);
+      if (old) { old.textContent = '🔊'; old.classList.remove('speaking'); }
+    }
+    _ttsActiveIdx = idx;
+    if (btn) { btn.textContent = '⏹'; btn.classList.add('speaking'); }
+
+    const utt = new SpeechSynthesisUtterance(title + '. ' + (snippet || ''));
+    utt.rate = 0.93;
+    utt.pitch = 1;
+    const sel = document.getElementById('tts-voice-select');
+    if (sel && sel.value !== '') {
+      const voices = speechSynthesis.getVoices().filter(v => v.lang.startsWith('en'));
+      if (voices[parseInt(sel.value)]) utt.voice = voices[parseInt(sel.value)];
+    }
+    utt.onend = utt.onerror = () => {
+      _ttsActiveIdx = -1;
+      if (btn) { btn.textContent = '🔊'; btn.classList.remove('speaking'); }
+    };
+    speechSynthesis.speak(utt);
+  }
+
+  // Shared TTS helper used by all Summarize buttons
+  function speakSummaryText(text, btn, idleLabel, keepEnabled) {
+    if (!window.speechSynthesis) return;
+    speechSynthesis.cancel();
+    if (btn) { btn.textContent = '🔊 Reading…'; btn.disabled = false; }
+    const utt = new SpeechSynthesisUtterance(text);
+    utt.rate = 0.93; utt.pitch = 1;
+    const sel = document.getElementById('tts-voice-select');
+    if (sel && sel.value !== '') {
+      const voices = speechSynthesis.getVoices().filter(v => v.lang.startsWith('en'));
+      if (voices[parseInt(sel.value)]) utt.voice = voices[parseInt(sel.value)];
+    }
+    utt.onend = utt.onerror = () => {
+      if (btn) { btn.textContent = idleLabel || '✅ Done'; btn.disabled = !keepEnabled; }
+    };
+    speechSynthesis.speak(utt);
+  }
+
+  function _pillLabel(secs) {
+    const m = Math.floor(secs / 60);
+    const s = secs % 60;
+    return `${m}:${String(s).padStart(2,'0')}`;
+  }
+
+  function _updatePausePill() {
+    const pill = document.getElementById('live-pause-pill');
+    if (!pill) return;
+    const liveSection = document.getElementById('live-section');
+    const isLive = liveSection && liveSection.style.display !== 'none';
+    if (liveCountdownPaused && isLive) {
+      const lbl = _pillLabel(liveSecondsLeft);
+      pill.innerHTML =
+        `<span>⏸</span><span class="pill-timer">${lbl}</span>` +
+        `<span class="pill-hint">· paused — tap to scroll up &amp; resume</span>`;
+      pill.classList.add('visible');
+    } else {
+      pill.classList.remove('visible');
+    }
+  }
+
   function startCountdown() {
     clearInterval(liveCountdownTimer);
     liveSecondsLeft = getIntervalSecs();
     const cd = document.getElementById('live-countdown');
     liveCountdownTimer = setInterval(() => {
-      liveSecondsLeft--;
-      const m = Math.floor(liveSecondsLeft / 60);
-      const s = liveSecondsLeft % 60;
-      cd.textContent = `↻ ${m}:${String(s).padStart(2,'0')}`;
-      if (liveSecondsLeft <= 0) {
+      if (!liveCountdownPaused) liveSecondsLeft--;
+      const lbl = _pillLabel(liveSecondsLeft);
+      cd.textContent = liveCountdownPaused ? `⏸ ${lbl}` : `↻ ${lbl}`;
+      _updatePausePill();
+      if (!liveCountdownPaused && liveSecondsLeft <= 0) {
         clearInterval(liveCountdownTimer);
         refreshLive();
       }
@@ -2094,10 +2477,40 @@
 
   // Live is the default view — geography first, load world/all on startup
   document.addEventListener('DOMContentLoaded', () => {
-    selectRegion('world');
+    selectRegion('usa');
     startAlertsPolling();
     updateSavedBadge();
     loadTrending();
+
+    // Init TTS voices (browser may load them async)
+    if (window.speechSynthesis) {
+      speechSynthesis.onvoiceschanged = _initTtsVoices;
+      _initTtsVoices();
+    }
+
+    // Inject the pause pill
+    const _pill = document.createElement('div');
+    _pill.id = 'live-pause-pill';
+    _pill.title = 'Click to scroll back to top';
+    _pill.onclick = () => window.scrollTo({ top: 0, behavior: 'smooth' });
+    document.body.appendChild(_pill);
+
+    // Pause countdown when user scrolls away from top; resume on return
+    window.addEventListener('scroll', () => {
+      const wasP = liveCountdownPaused;
+      const liveSection = document.getElementById('live-section');
+      const isLive = liveSection && liveSection.style.display !== 'none';
+      liveCountdownPaused = isLive && window.scrollY > 80;
+      if (wasP !== liveCountdownPaused) {
+        // Immediately update the header countdown label
+        const cd = document.getElementById('live-countdown');
+        if (cd && liveSecondsLeft > 0) {
+          const lbl = _pillLabel(liveSecondsLeft);
+          cd.textContent = liveCountdownPaused ? `⏸ ${lbl}` : `↻ ${lbl}`;
+        }
+        _updatePausePill();
+      }
+    }, { passive: true });
   });
 
   async function summarizeLive(idx, btn) {
@@ -2134,10 +2547,10 @@
           } catch {}
         }
       }
-      btn.textContent = '✅ Done';
+      speakSummaryText(box.textContent, btn, '✅ Done');
     } catch(e) {
       box.textContent = 'Error: ' + e.message;
-      btn.textContent = 'Summarize';
+      btn.textContent = '✨ Summarize';
       btn.disabled = false;
     }
   }
@@ -2147,6 +2560,7 @@
   const alertsSeen = new Set();
   let alertsData   = [];   // newest first
   let alertsUnread = 0;
+  let alertsRegion = 'usa';
   let alertsIdCtr  = 0;
   let alertsPollTimer      = null;
   let alertsTimestampTimer = null;
@@ -2160,6 +2574,14 @@
     if (s < 3600)  return Math.floor(s / 60) + 'm ago';
     if (s < 86400) return Math.floor(s / 3600) + 'h ago';
     return Math.floor(s / 86400) + 'd ago';
+  }
+
+  function fmtDate(ts) {
+    if (!ts) return '';
+    return new Date(ts * 1000).toLocaleString(undefined, {
+      month: 'short', day: 'numeric', year: 'numeric',
+      hour: 'numeric', minute: '2-digit'
+    });
   }
 
   function saveAlertRating(url, val, alertId) {
@@ -2177,7 +2599,8 @@
 
   function buildAlertCard(item) {
     const div = document.createElement('div');
-    div.className = 'alert-card ' + (item.read ? 'read' : 'unread');
+    const alertImp = item.importance || getImportance(item.title);
+    div.className = 'alert-card ' + (item.read ? 'read' : 'unread') + (alertImp !== 'normal' ? ' ' + alertImp : '');
     div.id = item.id;
     const catLabel = item.category.charAt(0).toUpperCase() + item.category.slice(1);
     const catSlug  = item.category.toLowerCase().replace(/ /g, '-');
@@ -2187,7 +2610,7 @@
     ).join('');
     div.innerHTML = `
       <div class="alert-meta">
-        <span class="live-topic-badge ${catSlug}">${esc(catLabel)}</span>
+        ${impBadgeHtml(alertImp)}<span class="live-topic-badge ${catSlug}">${esc(catLabel)}</span>
         <span class="alert-source">${esc(item.source || '')}</span>
         <span class="alert-time" data-ts="${item.arrivedAt}">${timeAgo(item.arrivedAt)}</span>
       </div>
@@ -2243,10 +2666,10 @@
           } catch {}
         }
       }
-      btn.textContent = '✅ Done';
+      speakSummaryText(box.textContent, btn, '✅ Done');
     } catch(e) {
       box.textContent = 'Error: ' + e.message;
-      btn.textContent = 'Summarize';
+      btn.textContent = '✨ Summarize';
       btn.disabled = false;
     }
   }
@@ -2292,7 +2715,28 @@
   }
 
   function getWatchedCats() {
-    return ['breaking','world','politics','tech','finance','health','environment','science','entertainment','ai','gaming','realestate'];
+    const region = alertsRegion || 'usa';
+    // Topics that have backend -usa variants
+    const USA_VARIANTS = new Set(['politics','sports','finance','business','science','health','environment']);
+    const topics = ['breaking','world','politics','tech','finance','health','environment','science','entertainment','ai','gaming','realestate'];
+    if (region === 'world') return topics.map(t => t === 'world' ? 'all' : t);
+    return topics.map(t => {
+      if (t === 'world') return region;                          // 'usa', 'india', etc.
+      if (region === 'usa' && USA_VARIANTS.has(t)) return t + '-usa';
+      return t;                                                  // fallback to global
+    });
+  }
+
+  function selectAlertsRegion(region) {
+    alertsRegion = region;
+    const sel = document.getElementById('alerts-region-sel');
+    if (sel) sel.value = region;
+    // Reset all alerts state and re-fetch with new region
+    alertsSeen.clear();
+    alertsData = []; alertsUnread = 0; alertsIdCtr = 0; alertsCatIdx = 0;
+    alertsInitDone = false;
+    updateAlertsBadge();
+    initAlerts();
   }
 
   function setAlertsStatus(msg) {
@@ -2316,7 +2760,7 @@
         items.forEach(item => {
           if (!alertsSeen.has(item.url)) {
             alertsSeen.add(item.url);
-            allItems.push({ ...item, category: cat, arrivedAt: Date.now(), read: true, id: 'al' + alertsIdCtr++ });
+            allItems.push({ ...item, category: cat, arrivedAt: ((item.published_ts || item.fetched_at || 0) * 1000) || Date.now(), read: true, id: 'al' + alertsIdCtr++ });
           }
         });
       } catch(e) {}
@@ -2702,7 +3146,7 @@
       <div class="live-card" style="--i:${i}">
         <div class="live-card-source">${esc(item.source||'')}${badge}</div>
         <div class="live-card-title"><a href="${esc(item.url)}" target="_blank" rel="noopener">${esc(item.title)}</a></div>
-        <div class="live-card-meta">${esc(item.published||'')}</div>
+        <div class="live-card-meta">${fmtDate(item.published_ts || item.fetched_at)}</div>
         <div class="live-card-snippet">${esc(item.snippet||'')}</div>
         <div class="live-card-footer">
           <div class="live-card-actions">
@@ -2888,7 +3332,7 @@
                   onclick="toggleSrchBookmark(${i},'${esc(item.url)}','${esc(item.title)}','${esc(item.snippet||'')}','${esc(item.source||'')}','${esc(item.topic||'')}','${esc(item.published||'')}','abkm2-')" title="Save">🔖</button>
                 <button class="live-action-btn" onclick="shareArticle('${esc(item.url)}','${esc(item.title)}')" title="Share">↗</button>
               </div>
-              <span class="live-card-time">${esc(item.published||'')}</span>
+              <span class="live-card-time">${fmtDate(item.published_ts || item.fetched_at)}</span>
             </div></div>`;
         }).join('') + '</div>';
       res.innerHTML = '<div id="alerts-srch-ai"></div>' + alertsArticlesHtml;
@@ -2984,23 +3428,45 @@
   function renderAiSummary(el, text, q, isAlerts, final) {
     const entityMatch = text.match(/ENTITIES:\s*(.+)/i);
     const topicMatch  = text.match(/TOPICS:\s*(.+)/i);
-    let summaryText = text.replace(/ENTITIES:.*$/im,'').replace(/TOPICS:.*$/im,'').trim();
-    let widgetsHtml = '';
+    const summaryText = text.replace(/ENTITIES:.*$/im,'').replace(/TOPICS:.*$/im,'').trim();
     const searchFn = isAlerts ? 'doAlertsArticleSearch' : 'doArticleSearch';
-    const entities = entityMatch ? entityMatch[1].split(',').map(s=>s.trim()).filter(s=>s&&s.length<60) : [];
-    const topics   = topicMatch  ? topicMatch[1].split(',').map(s=>s.trim()).filter(s=>s&&s.length<60) : [];
-    if (entities.length || topics.length) {
-      const chips = [
-        ...entities.map(e=>`<span class="ai-chip entity" onclick="${searchFn}('${esc(e)}')" title="Search: ${esc(e)}">${esc(e)}</span>`),
-        ...topics.map(t=>`<span class="ai-chip" onclick="${searchFn}('${esc(t)}')" title="Search: ${esc(t)}">${esc(t)}</span>`)
-      ].join('');
-      widgetsHtml = `<div class="ai-summary-widgets"><div class="ai-widgets-label">Related</div>${chips}</div>`;
+
+    // Create card skeleton once — avoids destroying/recreating DOM on every chunk (stops the shake)
+    let card = el.querySelector('.ai-summary-card');
+    if (!card) {
+      el.innerHTML = `<div class="ai-summary-card">
+        <div class="ai-summary-header">✨ AI Synthesis — <em style="font-weight:400;text-transform:none">${esc(q)}</em></div>
+        <div class="ai-summary-text"></div>
+        <div class="ai-summary-widgets-wrap"></div>
+      </div>`;
+      card = el.querySelector('.ai-summary-card');
     }
-    el.innerHTML = `<div class="ai-summary-card">
-      <div class="ai-summary-header">✨ AI Synthesis — <em style="font-weight:400;text-transform:none">${esc(q)}</em></div>
-      <div class="ai-summary-text">${esc(summaryText)}${!final?'<span class="ai-cursor">▊</span>':''}</div>
-      ${widgetsHtml}
-    </div>`;
+
+    // Update only the text node in-place — no DOM thrash, no reflow, no animation retrigger
+    const textEl = card.querySelector('.ai-summary-text');
+    if (textEl) {
+      textEl.textContent = summaryText;
+      if (!final) {
+        const cursor = document.createElement('span');
+        cursor.className = 'ai-cursor';
+        cursor.textContent = '\u25ca';
+        textEl.appendChild(cursor);
+      }
+    }
+
+    // Render entity/topic chips only on final render (they appear at the end of the stream anyway)
+    if (final) {
+      const entities = entityMatch ? entityMatch[1].split(',').map(s=>s.trim()).filter(s=>s&&s.length<60) : [];
+      const topics   = topicMatch  ? topicMatch[1].split(',').map(s=>s.trim()).filter(s=>s&&s.length<60) : [];
+      if (entities.length || topics.length) {
+        const chips = [
+          ...entities.map(e=>`<span class="ai-chip entity" onclick="${searchFn}('${esc(e)}')" title="Search: ${esc(e)}">${esc(e)}</span>`),
+          ...topics.map(t=>`<span class="ai-chip" onclick="${searchFn}('${esc(t)}')" title="Search: ${esc(t)}">${esc(t)}</span>`)
+        ].join('');
+        const wrap = card.querySelector('.ai-summary-widgets-wrap');
+        if (wrap) wrap.innerHTML = `<div class="ai-summary-widgets"><div class="ai-widgets-label">Related</div>${chips}</div>`;
+      }
+    }
   }
 
   function toggleSrchBookmark(idx, url, title, snippet, source, topic, published) {
@@ -3019,6 +3485,162 @@
     saveBookmarks(bookmarks);
     updateSavedBadge();
   }
+
+  // ── Digest Tab ──────────────────────────────────────────────────────────────
+  const DIGEST_TOPICS = [
+    {key:'world',         label:'World',         icon:'🌍'},
+    {key:'politics',      label:'Politics',       icon:'🏛️'},
+    {key:'tech',          label:'Tech',           icon:'💻'},
+    {key:'finance',       label:'Finance',        icon:'📈'},
+    {key:'health',        label:'Health',         icon:'🏥'},
+    {key:'science',       label:'Science',        icon:'🔬'},
+    {key:'environment',   label:'Environment',    icon:'🌿'},
+    {key:'entertainment', label:'Entertainment',  icon:'🎬'},
+    {key:'ai',            label:'AI / ML',        icon:'🤖'},
+    {key:'breaking',      label:'Breaking',       icon:'🚨'},
+  ];
+
+  let digestHours = 24;
+
+  function selectDigestTime(hours) {
+    digestHours = hours;
+    document.querySelectorAll('.digest-time-btn').forEach(b =>
+      b.classList.toggle('active', parseFloat(b.dataset.hours) === hours)
+    );
+    loadDigestStats();
+  }
+
+  async function loadDigestStats() {
+    const grid = document.getElementById('digest-grid');
+    if (!grid) return;
+    grid.innerHTML = '<div class="digest-loading">⏳ Loading topic data…</div>';
+    try {
+      const r = await fetch('/digest/stats?hours=' + digestHours);
+      if (!r.ok) throw new Error('Server error ' + r.status);
+      const data = await r.json();
+
+      // Gap warning (server was down)
+      const warn = document.getElementById('digest-gap-warning');
+      if (data.gap_warning) {
+        warn.textContent = '⚠️ Last article fetched ' + data.gap_warning.toFixed(1) + 'h ago (' + fmtDate(data.gap_ts) + '). Summaries reflect available data only.';
+        warn.style.display = '';
+      } else {
+        warn.style.display = 'none';
+      }
+
+      // Build article count map
+      const topicMap = {};
+      (data.topics || []).forEach(t => { topicMap[t.topic] = t; });
+
+      grid.innerHTML = '';
+      DIGEST_TOPICS.forEach(t => {
+        const stat = topicMap[t.key] || {count: 0};
+        const noData = stat.count === 0;
+        const card = document.createElement('div');
+        card.className = 'digest-topic-card';
+        card.innerHTML =
+          '<div class="digest-card-header">' +
+            '<span class="digest-topic-icon">' + t.icon + '</span>' +
+            '<span class="digest-topic-name">' + t.label + '</span>' +
+            '<span class="digest-article-count">' + stat.count + ' articles</span>' +
+          '</div>' +
+          '<div class="digest-card-body" id="digest-body-' + t.key + '">' +
+            (noData
+              ? '<span class="digest-no-data">No articles in this window</span>'
+              : `<button class="digest-gen-btn" onclick="generateDigest('${t.key}')">✨ Summarize</button>`
+            ) +
+          '</div>';
+        grid.appendChild(card);
+      });
+    } catch(e) {
+      grid.innerHTML = '<div class="digest-loading">⚠️ Could not load stats — server may be offline.<br><small>' + e.message + '</small></div>';
+    }
+  }
+
+  async function generateDigest(topic) {
+    const body = document.getElementById('digest-body-' + topic);
+    if (!body) return;
+    const model = document.getElementById('model-select')?.value || 'qwen3:8b';
+    body.innerHTML = '<div class="digest-generating">⏳ Generating summary…</div>';
+    let accumulated = '';
+    try {
+      const resp = await fetch('/digest/generate', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({topic, hours: digestHours, model})
+      });
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({error: 'Server error ' + resp.status}));
+        body.innerHTML =
+          '<div class="digest-no-data">⚠️ ' + (err.error || 'Error') + '</div>' +
+          `<button class="digest-regen-btn" onclick="generateDigest('${topic}')">↩ Retry</button>`;
+        return;
+      }
+      const reader = resp.body.getReader();
+      const dec = new TextDecoder();
+      let buf = '';
+      while (true) {
+        const {value, done} = await reader.read();
+        if (done) break;
+        buf += dec.decode(value, {stream: true});
+        const lines = buf.split('\n');
+        buf = lines.pop() || '';
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          try {
+            const ev = JSON.parse(line.slice(6));
+            if (ev.error) {
+              body.innerHTML = '<div class="digest-no-data">⚠️ ' + ev.error + '</div>';
+              return;
+            }
+            if (ev.done) { renderDigestCard(body, accumulated, topic, true); return; }
+            if (ev.text) { accumulated += ev.text; renderDigestCard(body, accumulated, topic, false); }
+          } catch(_) {}
+        }
+      }
+      renderDigestCard(body, accumulated, topic, true);
+    } catch(e) {
+      body.innerHTML =
+        '<div class="digest-no-data">⚠️ Connection error: ' + e.message + '</div>' +
+        `<button class="digest-regen-btn" onclick="generateDigest('${topic}')">↩ Retry</button>`;
+    }
+  }
+
+  function renderDigestCard(body, text, topic, final) {
+    const kpMatch = text.match(/KEY_POINTS:\s*(.+)/i);
+    const mainText = text.replace(/KEY_POINTS:.*$/im, '').trim();
+
+    // Create container once — update in-place to avoid reflow shake
+    let wrap = body.querySelector('.digest-summary-container');
+    if (!wrap) {
+      body.innerHTML =
+        '<div class="digest-summary-container">' +
+          '<div class="digest-summary-text"></div>' +
+          '<div class="digest-kp-wrap"></div>' +
+          `<button class="digest-regen-btn" onclick="generateDigest('${topic}')">↩ Regenerate</button>` +
+          `<button class="digest-regen-btn" style="margin-left:8px" onclick="speakSummaryText(this.closest('.digest-summary-container').querySelector('.digest-summary-text').textContent,this,'🔊 Read aloud',true)">🔊 Read aloud</button>` +
+        '</div>';
+      wrap = body.querySelector('.digest-summary-container');
+    }
+    const textEl = wrap.querySelector('.digest-summary-text');
+    if (textEl) {
+      textEl.textContent = mainText;
+      if (!final) {
+        const cur = document.createElement('span');
+        cur.className = 'ai-cursor'; cur.textContent = '\u25ca';
+        textEl.appendChild(cur);
+      }
+    }
+    if (final && kpMatch) {
+      const points = kpMatch[1].split('|').map(s => s.trim()).filter(Boolean);
+      if (points.length) {
+        const kpWrap = wrap.querySelector('.digest-kp-wrap');
+        if (kpWrap) kpWrap.innerHTML =
+          '<ul class="digest-key-points">' + points.map(p => '<li>' + esc(p) + '</li>').join('') + '</ul>';
+      }
+    }
+  }
+
 
 </script>
 </body>

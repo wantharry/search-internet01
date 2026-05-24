@@ -1,4 +1,5 @@
 import asyncio
+import datetime
 import json
 import os
 import re
@@ -459,6 +460,9 @@ LIVE_FEEDS: dict[str, list[str]] = {
         # Tech
         "https://techcrunch.com/feed/",
         "https://feeds.arstechnica.com/arstechnica/index",
+        "https://www.theverge.com/rss/index.xml",
+        "https://hnrss.org/frontpage",
+        "https://www.engadget.com/rss.xml",
         # Finance
         "https://www.cnbc.com/id/10000664/device/rss/rss.html",
         "https://feeds.marketwatch.com/marketwatch/topstories/",
@@ -510,9 +514,34 @@ LIVE_FEEDS: dict[str, list[str]] = {
         "https://rss.nytimes.com/services/xml/rss/nyt/Sports.xml",
     ],
     "tech": [
+        # Tier-1 daily drivers
         "https://techcrunch.com/feed/",
         "https://feeds.arstechnica.com/arstechnica/index",
         "https://www.wired.com/feed/rss",
+        "https://www.theverge.com/rss/index.xml",
+        "https://venturebeat.com/feed/",
+        "https://www.engadget.com/rss.xml",
+        # Developer / engineer perspective
+        "https://hnrss.org/frontpage",               # Hacker News top stories
+        "https://dev.to/feed",
+        "https://feed.infoq.com/",
+        "https://feeds.feedburner.com/ThePragmaticEngineer",
+        # Hardware & deep tech
+        "https://www.tomshardware.com/feeds/all",
+        "https://www.anandtech.com/rss/",
+        "https://spectrum.ieee.org/feeds/feed.rss",
+        # Mobile / consumer
+        "https://9to5mac.com/feed/",
+        "https://9to5google.com/feed/",
+        "https://www.macrumors.com/macrumors.xml",
+        # Security
+        "https://www.bleepingcomputer.com/feed/",
+        "https://krebsonsecurity.com/feed/",
+        # Broader tech news
+        "https://www.zdnet.com/news/rss.xml",
+        "https://www.techradar.com/rss",
+        "https://www.technologyreview.com/feed/",
+        "http://rss.slashdot.org/Slashdot/slashdotMain",
     ],
     "finance": [
         "https://www.cnbc.com/id/10000664/device/rss/rss.html",   # CNBC Finance
@@ -850,45 +879,122 @@ _KEY_TOPIC_LABELS: dict[str, str] = {
     "europe": "Europe", "mideast": "Mideast",
 }
 
+# ── News importance keyword sets ─────────────────────────────────────────────
+_BREAKING_KEYWORDS: frozenset = frozenset({
+    "breaking", "urgent", "alert", "emergency", "attack", "explosion",
+    "earthquake", "tsunami", "hurricane", "tornado", "killed", "dead",
+    "shooting", "crash", "fire", "flood", "arrested", "indicted",
+    "war", "invasion", "crisis", "collapse", "recall", "resign",
+    "impeach", "outbreak", "pandemic", "hostage", "siege", "blast",
+    "assassination", "missing", "wildfire", "avalanche", "poisoning",
+    "evacuate", "evacuation", "massacre", "genocide", "chemical",
+})
+_HIGH_KEYWORDS: frozenset = frozenset({
+    "major", "historic", "record", "landmark", "election", "vote",
+    "court", "ruling", "verdict", "guilty", "sentenced", "acquitted",
+    "agreement", "deal", "treaty", "summit", "sanction", "tariff",
+    "ban", "strike", "inflation", "rate hike", "rate cut", "federal reserve",
+    "lawsuit", "indictment", "protest", "riot", "investigation", "scandal",
+    "impeachment", "breakthrough", "discovery", "first ever", "banned",
+})
+
 
 @app.get("/live/{category}")
 async def get_live_feed(category: str):
-    """Fetch and merge RSS feeds for a category."""
+    """90 articles from DB cache + only the newest 5-per-feed from RSS.
+    Scales well: DB read is ~5 ms; RSS payloads are 4x smaller."""
     import math, time as _time, calendar
 
     key = category.lower()
     feeds = LIVE_FEEDS.get(key, [])
     if not feeds and "-" in key:
-        # fallback to region, then to topic
         topic, region = key.split("-", 1)
         feeds = LIVE_FEEDS.get(region, []) or LIVE_FEEDS.get(topic, [])
     if not feeds:
         return JSONResponse({"error": "Unknown category"}, status_code=404)
 
     use_weighted = (key == "all")
-    now_ts = _time.time()
+    now_ts   = _time.time()
+    _lk      = key.split("-")[0] if "-" in key else key
+    db_topic = _KEY_TOPIC_LABELS.get(_lk, "") if key != "all" else ""
 
-    all_items: list[dict] = []
+    # ── Step 1: pull 90 articles from SQLite (instant) ────────────────
+    with _db_lock:
+        with sqlite3.connect(DB_PATH) as _con:
+            _con.row_factory = sqlite3.Row
+            if db_topic:
+                _rows = _con.execute(
+                    "SELECT url,title,snippet,source,topic,published,fetched_at"
+                    " FROM articles WHERE topic=? ORDER BY fetched_at DESC LIMIT 90",
+                    (db_topic,),
+                ).fetchall()
+            else:
+                _rows = _con.execute(
+                    "SELECT url,title,snippet,source,topic,published,fetched_at"
+                    " FROM articles ORDER BY fetched_at DESC LIMIT 90",
+                ).fetchall()
 
+    db_urls: set[str] = set()
+    db_items: list[dict] = []
+    for row in _rows:
+        url = row["url"]
+        if not url or url in db_urls:
+            continue
+        db_urls.add(url)
+        t = (row["title"] or "").lower()
+        if any(kw in t for kw in _BREAKING_KEYWORDS):
+            imp, boost = "breaking", 2.5
+        elif any(kw in t for kw in _HIGH_KEYWORDS):
+            imp, boost = "high", 0.9
+        else:
+            imp, boost = "normal", 0.0
+        pub_ts = row["published"] or 0
+        age_h  = (now_ts - pub_ts) / 3600 if pub_ts else 48
+        score  = (1.5 + boost) * math.exp(-age_h / 6.0)
+        pub_str = ""
+        if pub_ts:
+            try:
+                pub_str = datetime.datetime.utcfromtimestamp(pub_ts).strftime(
+                    "%a, %d %b %Y %H:%M UTC"
+                )
+            except Exception:
+                pass
+        db_items.append({
+            "url": url, "title": row["title"] or "",
+            "snippet": row["snippet"] or "", "source": row["source"] or "",
+            "topic": row["topic"] or "", "published": pub_str,
+            "published_ts": pub_ts, "fetched_at": row["fetched_at"] or 0,
+            "importance": imp, "_score": score,
+        })
+
+    # ── Step 2: RSS — only 5 latest entries per feed ──────────────────
+    rss_new: list[dict] = []
     async with httpx.AsyncClient(
-        timeout=10.0,
+        timeout=8.0,
         headers={"User-Agent": "Mozilla/5.0 (compatible; RSSReader/1.0)"},
         follow_redirects=True,
     ) as client:
-        async def fetch_feed(url: str) -> list[dict]:
+        async def fetch_feed(feed_url: str) -> list[dict]:
             try:
-                resp = await client.get(url)
+                resp   = await client.get(feed_url)
                 parsed = feedparser.parse(resp.text)
-                source = parsed.feed.get("title", url)
-                weight = _ALL_WEIGHTS.get(url, 1.5) if use_weighted else 1.0
-                # For compound keys like "sports-usa", extract the topic part for the label
-                _label_key = key.split("-")[0] if "-" in key else key
-                topic_label = _ALL_TOPIC_LABELS.get(url, "") if use_weighted else _KEY_TOPIC_LABELS.get(_label_key, "")
+                source = parsed.feed.get("title", feed_url)
+                weight = _ALL_WEIGHTS.get(feed_url, 1.5) if use_weighted else 1.0
+                topic_label = (
+                    _ALL_TOPIC_LABELS.get(feed_url, "")
+                    if use_weighted
+                    else _KEY_TOPIC_LABELS.get(_lk, "")
+                )
                 items = []
-                for entry in parsed.entries[:20]:
+                for entry in parsed.entries[:5]:   # ← 5 per feed (was 20)
+                    url = entry.get("link", "")
+                    if not url or url in db_urls:
+                        continue                   # skip what DB already has
                     snippet = entry.get("summary", "") or entry.get("description", "")
                     from bs4 import BeautifulSoup as _BS
-                    snippet = _BS(snippet, "html.parser").get_text(separator=" ", strip=True)[:300]
+                    snippet = _BS(snippet, "html.parser").get_text(
+                        separator=" ", strip=True
+                    )[:300]
                     pub_ts = 0
                     if entry.get("published_parsed"):
                         try:
@@ -900,46 +1006,138 @@ async def get_live_feed(category: str):
                             pub_ts = calendar.timegm(entry.updated_parsed)
                         except Exception:
                             pass
-                    # Time-decay score: importance × e^(-age_hours / half_life)
-                    # half_life=6h means an article 6h old scores half as much as brand new
-                    if use_weighted and pub_ts:
-                        age_hours = (now_ts - pub_ts) / 3600
-                        score = weight * math.exp(-age_hours / 6.0)
+                    t = entry.get("title", "").lower()
+                    if any(kw in t for kw in _BREAKING_KEYWORDS):
+                        imp, boost = "breaking", 2.5
+                    elif any(kw in t for kw in _HIGH_KEYWORDS):
+                        imp, boost = "high", 0.9
                     else:
-                        score = float(pub_ts)  # plain timestamp sort for single topics
+                        imp, boost = "normal", 0.0
+                    age_h = (now_ts - pub_ts) / 3600 if pub_ts else 0.1
+                    score = (weight + boost) * math.exp(-age_h / 6.0)
                     items.append({
                         "title": entry.get("title", "").strip(),
-                        "url": entry.get("link", ""),
+                        "url": url,
                         "snippet": snippet,
                         "source": source,
                         "published": entry.get("published", entry.get("updated", "")),
+                        "published_ts": pub_ts or now_ts,
                         "topic": topic_label,
+                        "importance": imp,
                         "_score": score,
+                        "_pub_ts": pub_ts,
                     })
                 return items
             except Exception:
                 return []
 
-        results = await asyncio.gather(*[fetch_feed(url) for url in feeds])
+        results = await asyncio.gather(*[fetch_feed(u) for u in feeds])
         for items in results:
-            all_items.extend(items)
+            rss_new.extend(items)
 
-    # Deduplicate by URL, then sort by score (weighted or timestamp)
-    seen: set[str] = set()
-    unique: list[dict] = []
-    for item in all_items:
-        if item["url"] and item["url"] not in seen:
-            seen.add(item["url"])
-            unique.append(item)
+    # ── Step 3: deduplicate RSS, store new to DB, merge & sort ────────
+    seen_rss: set[str] = set()
+    fresh: list[dict] = []
+    to_store: list[dict] = []
+    for item in rss_new:
+        url = item["url"]
+        if url and url not in seen_rss and url not in db_urls:
+            seen_rss.add(url)
+            to_store.append(item)
+            fresh.append(item)
 
-    unique.sort(key=lambda x: x["_score"], reverse=True)
-    for item in unique:
+    if to_store:
+        threading.Thread(
+            target=_store_articles, args=(to_store,), daemon=True
+        ).start()
+
+    combined = fresh + db_items
+    # Sort by publication time newest-first; breaking/high get a time bonus
+    # so recent important news edges out recent fluff, but old news never tops fresh news
+    _IMP_BONUS = {"breaking": 21600, "high": 7200}  # seconds (6h / 2h)
+    combined.sort(
+        key=lambda x: (x.get("published_ts") or x.get("fetched_at") or x.get("_pub_ts") or 0)
+                      + _IMP_BONUS.get(x.get("importance", ""), 0),
+        reverse=True
+    )
+    for item in combined:
         item.pop("_score", None)
+        item.pop("_pub_ts", None)
 
-    limit = 100 if key == "all" else 50
-    result = unique[:limit]
-    # Store in DB without blocking the response
-    threading.Thread(target=_store_articles, args=(result,), daemon=True).start()
+    return JSONResponse(combined[:100])
+
+
+@app.get("/live/{category}/cached")
+async def get_live_feed_cached(category: str):
+    """Instant first render from SQLite — no RSS fetch."""
+    import math, time as _t
+    key = category.lower()
+    _lk = key.split("-")[0] if "-" in key else key
+    topic_label = _KEY_TOPIC_LABELS.get(_lk, "") if key != "all" else ""
+    now_ts = _t.time()
+
+    with _db_lock:
+        with sqlite3.connect(DB_PATH) as con:
+            con.row_factory = sqlite3.Row
+            if topic_label:
+                rows = con.execute(
+                    "SELECT url,title,snippet,source,topic,published,fetched_at"
+                    " FROM articles WHERE topic=?"
+                    " ORDER BY fetched_at DESC LIMIT 120",
+                    (topic_label,),
+                ).fetchall()
+            else:
+                rows = con.execute(
+                    "SELECT url,title,snippet,source,topic,published,fetched_at"
+                    " FROM articles ORDER BY fetched_at DESC LIMIT 150"
+                ).fetchall()
+
+    result = []
+    for row in rows:
+        title_lower = (row["title"] or "").lower()
+        if any(kw in title_lower for kw in _BREAKING_KEYWORDS):
+            importance, boost = "breaking", 2.5
+        elif any(kw in title_lower for kw in _HIGH_KEYWORDS):
+            importance, boost = "high", 0.9
+        else:
+            importance, boost = "normal", 0.0
+
+        pub_ts = row["published"] or 0
+        age_h  = (now_ts - pub_ts) / 3600 if pub_ts else 48
+        score  = (1.5 + boost) * math.exp(-age_h / 6.0)
+
+        # Format human-readable date from stored timestamp
+        if pub_ts:
+            try:
+                pub_str = datetime.datetime.utcfromtimestamp(pub_ts).strftime(
+                    "%a, %d %b %Y %H:%M UTC"
+                )
+            except Exception:
+                pub_str = ""
+        else:
+            pub_str = ""
+
+        result.append({
+            "url":        row["url"],
+            "title":      row["title"] or "",
+            "snippet":    row["snippet"] or "",
+            "source":     row["source"] or "",
+            "topic":      row["topic"] or "",
+            "published":  pub_str,
+            "published_ts": pub_ts,
+            "fetched_at": row["fetched_at"] or 0,
+            "importance": importance,
+            "_score":     score,
+        })
+
+    _IMP_BONUS = {"breaking": 21600, "high": 7200}
+    result.sort(
+        key=lambda x: (x.get("published_ts") or x.get("fetched_at") or 0)
+                      + _IMP_BONUS.get(x.get("importance", ""), 0),
+        reverse=True,
+    )
+    for item in result:
+        item.pop("_score", None)
     return JSONResponse(result)
 
 
@@ -1132,6 +1330,124 @@ async def get_trending(days: int = 3, limit: int = 25):
         return JSONResponse(top)
     except Exception as exc:
         return JSONResponse({"error": str(exc)}, status_code=500)
+
+
+
+# ── Digest: per-topic summaries from DB ──────────────────────────────────────
+
+class _DigestReq(BaseModel):
+    topic: str
+    hours: float = 24.0
+    model: str = DEFAULT_MODEL
+
+
+@app.get("/digest/stats")
+async def digest_stats(hours: float = 24.0):
+    """Return per-topic article counts + data-gap warning for the time window."""
+    import time as _t, datetime as _dt
+    now = _t.time()
+    cutoff = now - hours * 3600
+    with _db_lock:
+        with sqlite3.connect(DB_PATH) as con:
+            con.row_factory = sqlite3.Row
+            rows = con.execute(
+                "SELECT topic, COUNT(*) as cnt, MIN(fetched_at) as oldest, MAX(fetched_at) as newest"
+                " FROM articles WHERE fetched_at >= ? AND topic != ''"
+                " GROUP BY topic ORDER BY cnt DESC",
+                (cutoff,),
+            ).fetchall()
+            coverage = con.execute(
+                "SELECT MIN(fetched_at) as db_oldest, MAX(fetched_at) as db_newest,"
+                " COUNT(*) as total FROM articles WHERE fetched_at > 0"
+            ).fetchone()
+
+    topics = [{"topic": r["topic"].lower(), "count": r["cnt"],
+               "oldest": r["oldest"], "newest": r["newest"]} for r in rows]
+
+    # Gap detection: if newest article is old, server was likely offline
+    gap_warning = None
+    gap_ts = None
+    if coverage and coverage["db_newest"]:
+        age = now - coverage["db_newest"]
+        if age > 7200:  # more than 2 hours since last article
+            gap_ts = coverage["db_newest"]
+            gap_warning = round(age / 3600, 1)
+
+    return JSONResponse({
+        "topics": topics,
+        "hours": hours,
+        "gap_warning": gap_warning,
+        "gap_ts": gap_ts,
+        "total_in_window": sum(t["count"] for t in topics),
+    })
+
+
+@app.post("/digest/generate")
+async def digest_generate(req: _DigestReq):
+    import time as _t
+    since = _t.time() - req.hours * 3600
+    with _db_lock:
+        con = sqlite3.connect(DB_PATH)
+        con.row_factory = sqlite3.Row
+        rows = con.execute(
+            "SELECT title, snippet, source FROM articles "
+            "WHERE LOWER(topic)=LOWER(?) AND fetched_at>=? ORDER BY fetched_at DESC LIMIT 60",
+            (req.topic, since),
+        ).fetchall()
+        con.close()
+    rows = [dict(r) for r in rows]
+
+    if not rows:
+        return JSONResponse(
+            {"error": f"No articles found for '{req.topic}' in this window. "
+                      "The DB may not have collected data for this period yet."},
+            status_code=404,
+        )
+
+    topic_label = _KEY_TOPIC_LABELS.get(req.topic, req.topic.title())
+    hrs = req.hours
+    window_label = (f"{int(hrs)}h" if hrs < 24
+                    else f"{int(hrs // 24)}d" if hrs % 24 == 0
+                    else f"{hrs:.0f}h")
+
+    articles_text = "\n\n".join(
+        "\u2022 {} ({})\n  {}".format(r["title"], r["source"], (r["snippet"] or "")[:250])
+        for r in rows
+    )
+
+    prompt = (
+        f"You are a professional news analyst. Summarize the most important {topic_label} "
+        f"news developments from the past {window_label} based on these {len(rows)} articles.\n\n"
+        f"{articles_text}\n\n"
+        f"Write a clear, factual digest in 3-5 paragraphs. Be specific about names, figures, "
+        f"and events. Do not add disclaimers about your knowledge cutoff.\n\n"
+        "End your response with exactly this line (no extra text after it):\n"
+        "KEY_POINTS: <concise point 1> | <concise point 2> | <concise point 3>"
+    )
+
+    async def _stream():
+        try:
+            async with httpx.AsyncClient(timeout=180) as client:
+                async with client.stream(
+                    "POST", f"{OLLAMA_BASE}/api/generate",
+                    json={"model": req.model, "prompt": prompt, "stream": True},
+                ) as r:
+                    async for line in r.aiter_lines():
+                        if not line:
+                            continue
+                        try:
+                            chunk = json.loads(line)
+                            if chunk.get("response"):
+                                yield "data: " + json.dumps({"text": chunk["response"]}) + "\n\n"
+                            if chunk.get("done"):
+                                yield "data: " + json.dumps({"done": True}) + "\n\n"
+                                return
+                        except Exception:
+                            pass
+        except httpx.ConnectError:
+            yield "data: " + json.dumps({"error": "Cannot connect to Ollama. Is it running?"}) + "\n\n"
+
+    return StreamingResponse(_stream(), media_type="text/event-stream")
 
 
 if __name__ == "__main__":
