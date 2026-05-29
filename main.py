@@ -1415,23 +1415,26 @@ async def digest_generate(req: _DigestReq):
         try:
             async with httpx.AsyncClient(timeout=180) as client:
                 async with client.stream(
-                    "POST", f"{OLLAMA_BASE}/api/generate",
-                    json={"model": req.model, "prompt": prompt, "stream": True},
+                    "POST", f"{AI_BASE_URL}/chat/completions",
+                    headers={"Authorization": f"Bearer {AI_API_KEY}", "Content-Type": "application/json"},
+                    json={"model": req.model, "messages": [{"role": "user", "content": prompt}], "stream": True},
                 ) as r:
                     async for line in r.aiter_lines():
-                        if not line:
+                        if not line or not line.startswith("data: "):
                             continue
+                        raw = line[len("data: "):]
+                        if raw.strip() == "[DONE]":
+                            yield "data: " + json.dumps({"done": True}) + "\n\n"
+                            return
                         try:
-                            chunk = json.loads(line)
-                            if chunk.get("response"):
-                                yield "data: " + json.dumps({"text": chunk["response"]}) + "\n\n"
-                            if chunk.get("done"):
-                                yield "data: " + json.dumps({"done": True}) + "\n\n"
-                                return
+                            chunk = json.loads(raw)
+                            text = chunk.get("choices", [{}])[0].get("delta", {}).get("content", "")
+                            if text:
+                                yield "data: " + json.dumps({"text": text}) + "\n\n"
                         except Exception:
                             pass
         except httpx.ConnectError:
-            yield "data: " + json.dumps({"error": "Cannot connect to Ollama. Is it running?"}) + "\n\n"
+            yield "data: " + json.dumps({"error": "Cannot connect to AI endpoint."}) + "\n\n"
 
     return StreamingResponse(_stream(), media_type="text/event-stream")
 
