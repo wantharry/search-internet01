@@ -20,8 +20,9 @@ from pydantic import BaseModel
 
 load_dotenv()
 
-OLLAMA_BASE = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
-DEFAULT_MODEL = os.environ.get("OLLAMA_MODEL", "qwen3:8b")
+AI_BASE_URL = os.environ.get("AI_BASE_URL", "https://api.groq.com/openai/v1")
+AI_API_KEY = os.environ.get("AI_API_KEY", "")
+DEFAULT_MODEL = os.environ.get("AI_MODEL", "llama-3.3-70b-versatile")
 
 
 # ── Article DB ───────────────────────────────────────────────────────────────
@@ -307,7 +308,7 @@ async def stream_search(req: SearchRequest) -> AsyncGenerator[str, None]:
                 "progress": f"{done_count}/{total}",
             })
 
-    # --- 3. Ollama summarization (streaming) ---
+    # --- 3. AI summarization (streaming via Groq) ---
     _DEPTH_LABELS = {"ultra_short": "Ultra Short", "summary": "Summary", "detailed": "Detailed"}
     _MAX_FOR    = {"ultra_short": 10, "summary": 15, "detailed": 20}
     _LEN_FOR    = {"ultra_short": 300, "summary": 900, "detailed": 1500}
@@ -337,7 +338,7 @@ async def stream_search(req: SearchRequest) -> AsyncGenerator[str, None]:
         context = "\n\n".join(context_parts)
 
         prompt = _MATH_HINT + _build_prompt(depth, req.query, context)
-        async for chunk in _ollama_stream(req.model, prompt):
+        async for chunk in _ai_stream(req.model, prompt):
             yield evt({"type": "summary_chunk", "text": chunk, "depth": depth})
 
         yield evt({"type": "summary_done", "depth": depth})
@@ -345,14 +346,16 @@ async def stream_search(req: SearchRequest) -> AsyncGenerator[str, None]:
     yield evt({"type": "done", "total": total})
 
 
-# ── Ollama helpers ──────────────────────────────────────────────────────────
-
-_THINK_RE = re.compile(r"<think>.*?</think>", re.DOTALL)
+# ── Groq / OpenAI-compatible helpers ────────────────────────────────────────
 
 
-async def _ollama_stream(model: str, prompt: str) -> AsyncGenerator[str, None]:
-    """Stream tokens from Ollama, stripping <think>…</think> blocks."""
-    payload: dict = {
+async def _ai_stream(model: str, prompt: str) -> AsyncGenerator[str, None]:
+    """Stream tokens from a Groq (OpenAI-compatible) endpoint."""
+    headers = {
+        "Authorization": f"Bearer {AI_API_KEY}",
+        "Content-Type": "application/json",
+    }
+    payload = {
         "model": model,
         "messages": [
             {
@@ -370,45 +373,34 @@ async def _ollama_stream(model: str, prompt: str) -> AsyncGenerator[str, None]:
         ],
         "stream": True,
     }
-    # Disable built-in thinking for qwen3 to keep output clean
-    if model.startswith("qwen3"):
-        payload["think"] = False
-
-    buf = ""  # accumulate to handle think-blocks that span chunks
-    in_think = False
 
     try:
         async with httpx.AsyncClient(timeout=None) as client:
             async with client.stream(
-                "POST", f"{OLLAMA_BASE}/api/chat", json=payload
+                "POST",
+                f"{AI_BASE_URL}/chat/completions",
+                headers=headers,
+                json=payload,
             ) as resp:
                 async for line in resp.aiter_lines():
-                    if not line:
+                    if not line or not line.startswith("data: "):
                         continue
+                    raw = line[len("data: "):]
+                    if raw.strip() == "[DONE]":
+                        break
                     try:
-                        data = json.loads(line)
+                        data = json.loads(raw)
                     except json.JSONDecodeError:
                         continue
-                    chunk = data.get("message", {}).get("content", "")
+                    chunk = (
+                        data.get("choices", [{}])[0]
+                        .get("delta", {})
+                        .get("content", "")
+                    )
                     if chunk:
-                        buf += chunk
-                        # Strip complete think blocks accumulated so far
-                        buf = _THINK_RE.sub("", buf)
-                        # Handle partial opening tag
-                        if "<think>" in buf and "</think>" not in buf:
-                            in_think = True
-                            buf = buf.split("<think>")[0]
-                        elif "</think>" in buf:
-                            in_think = False
-                        if buf and not in_think:
-                            yield buf
-                            buf = ""
-                    if data.get("done"):
-                        break
-        if buf and not in_think:
-            yield buf
+                        yield chunk
     except httpx.ConnectError:
-        yield "\n\n*Error: Could not connect to Ollama. Is it running at " + OLLAMA_BASE + "?*"
+        yield f"\n\n*Error: Could not connect to AI endpoint at {AI_BASE_URL}.*"
     except Exception as exc:
         yield f"\n\n*Summarization error: {exc}*"
 
@@ -417,14 +409,8 @@ async def _ollama_stream(model: str, prompt: str) -> AsyncGenerator[str, None]:
 
 @app.get("/models")
 async def list_models():
-    """Return list of locally installed Ollama models."""
-    try:
-        async with httpx.AsyncClient(timeout=5.0) as client:
-            resp = await client.get(f"{OLLAMA_BASE}/api/tags")
-            data = resp.json()
-            return JSONResponse([m["name"] for m in data.get("models", [])])
-    except Exception:
-        return JSONResponse([])
+    """Return the configured model."""
+    return JSONResponse([DEFAULT_MODEL])
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -1178,7 +1164,7 @@ async def summarize_article(req: ArticleSummarizeRequest):
     )
 
     async def generate():
-        async for chunk in _ollama_stream(req.model, prompt):
+        async for chunk in _ai_stream(req.model, prompt):
             yield f"data: {json.dumps({'text': chunk})}\n\n"
         yield f"data: {json.dumps({'done': True})}\n\n"
 
@@ -1260,7 +1246,7 @@ async def search_ai_summary(req: SearchSummaryRequest):
     )
 
     async def generate():
-        async for chunk in _ollama_stream(req.model, prompt):
+        async for chunk in _ai_stream(req.model, prompt):
             yield f"data: {json.dumps({'text': chunk})}\n\n"
         yield f"data: {json.dumps({'done': True})}\n\n"
 

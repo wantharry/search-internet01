@@ -565,6 +565,17 @@
     display: none;
   }
   #tts-voice-select.active { display: inline-block; }
+  #digest-tts-voice {
+    font-size: 11px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 6px;
+    padding: 3px 6px;
+    cursor: pointer;
+    max-width: 180px;
+    display: inline-block;
+  }
   .live-ai-summary {
     background: var(--surface2);
     border-left: 3px solid var(--primary);
@@ -1821,6 +1832,13 @@
         <button class="digest-time-btn" data-hours="240" onclick="selectDigestTime(240)">10d</button>
         <button class="digest-time-btn" data-hours="720" onclick="selectDigestTime(720)">30d</button>
       </div>
+      <div style="display:flex;align-items:center;gap:6px;margin-top:8px;font-size:12px;color:var(--muted)">
+        🔊 Voice:
+        <select id="digest-tts-voice" title="Read-aloud voice"
+                onchange="document.getElementById('tts-voice-select').value=this.value">
+          <option value="">Default</option>
+        </select>
+      </div>
       <div id="digest-gap-warning" class="digest-gap-warning" style="display:none"></div>
     </div>
     <div class="digest-grid" id="digest-grid">
@@ -2375,10 +2393,13 @@
     if (!sel) return;
     const voices = speechSynthesis.getVoices().filter(v => v.lang.startsWith('en'));
     if (!voices.length) return;
-    sel.innerHTML = voices.map((v, i) =>
+    const opts = voices.map((v, i) =>
       `<option value="${i}">${v.name.replace('Google ','').replace('Microsoft ','').replace(' Online (Natural)','')}</option>`
     ).join('');
+    sel.innerHTML = opts;
     sel.classList.add('active');
+    const dsel = document.getElementById('digest-tts-voice');
+    if (dsel) dsel.innerHTML = '<option value="">Default</option>' + opts;
   }
 
   function speakArticle(idx, title, snippet) {

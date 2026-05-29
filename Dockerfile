@@ -17,9 +17,9 @@ COPY --from=builder /install /usr/local
 COPY main.py .
 COPY static/ static/
 
-# Ollama runs on the host; override via env var if needed
-ENV OLLAMA_HOST=http://host.docker.internal:11434
-ENV OLLAMA_MODEL=qwen3:8b
+ENV AI_BASE_URL=https://api.groq.com/openai/v1
+ENV AI_MODEL=llama-3.3-70b-versatile
+ENV AI_API_KEY=
 
 EXPOSE 8000
 
