@@ -144,6 +144,75 @@
     #search-btn:active:not(:disabled) { transform: translateY(0); }
     #search-btn:disabled { opacity: .45; cursor: not-allowed; box-shadow: none; }
 
+    /* ── Mic button ── */
+    #mic-btn {
+      background: var(--surface2);
+      border: 1.5px solid var(--border);
+      border-radius: 6px;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 22px;
+      padding: 0 18px;
+      height: 100%;
+      min-height: 60px;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all .2s;
+      line-height: 1;
+    }
+    #mic-btn:hover { border-color: var(--primary); color: var(--primary); }
+    #mic-btn.listening {
+      border-color: #ef4444;
+      color: #ef4444;
+      background: rgba(239,68,68,.1);
+      animation: mic-pulse 1s ease-in-out infinite;
+    }
+    @keyframes mic-pulse { 0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,.4)} 50%{box-shadow:0 0 0 8px rgba(239,68,68,0)} }
+
+    /* ── Voice status banner ── */
+    #voice-banner {
+      display: none;
+      align-items: center;
+      gap: 10px;
+      background: rgba(239,68,68,.08);
+      border: 1px solid rgba(239,68,68,.3);
+      border-radius: 10px;
+      padding: 10px 16px;
+      margin-bottom: 14px;
+      font-size: 13px;
+      color: #fca5a5;
+    }
+    #voice-banner.show { display: flex; }
+    .voice-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: #ef4444;
+      flex-shrink: 0;
+      animation: mic-dot 1s ease-in-out infinite;
+    }
+    @keyframes mic-dot { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.3;transform:scale(.7)} }
+
+    /* ── Read aloud button in summary ── */
+    #read-aloud-btn {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 5px 12px;
+      transition: all .18s;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+    #read-aloud-btn:hover { border-color: var(--primary); color: var(--primary); }
+    #read-aloud-btn.speaking { border-color: #f59e0b; color: #f59e0b; animation: tts-pulse 1.2s ease-in-out infinite; }
+
+
     /* ── Sliders ── */
     .settings { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
     .setting-group label {
@@ -1855,9 +1924,11 @@
         <span class="search-icon">&#128269;</span>
         <input id="query" type="text" placeholder="What do you want to research?" autofocus />
       </div>
+      <button id="mic-btn" onclick="toggleMic()" title="Voice search">🎤</button>
       <button id="search-btn" onclick="startSearch()">Search</button>
     </div>
 
+    <div id="voice-banner"><div class="voice-dot"></div><span id="voice-text">Listening… speak now</span></div>
     <div class="settings">
       <div class="setting-group">
         <label>
@@ -1898,6 +1969,10 @@
   <!-- AI Summary -->
   <div id="summary-card">
     <div style="font-size:14px;font-weight:700;color:var(--primary)">🤖 AI Summary</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <span style="font-size:13px;font-weight:700;color:var(--primary)">✦ AI Summary</span>
+      <button id="read-aloud-btn" onclick="toggleReadAloud()">🔊 Read aloud</button>
+    </div>
     <div class="summary-tabs">
       <button class="sum-tab active" data-depth="ultra_short" onclick="switchTab('ultra_short')">
         ⚡ Ultra Short <span class="tab-dot" id="dot-ultra_short"></span>
@@ -3662,6 +3737,106 @@
     }
   }
 
+
+
+  // ═══════════════════════════════════════════════
+  //  VOICE SEARCH + TEXT-TO-SPEECH
+  // ═══════════════════════════════════════════════
+  let recognition = null;
+  let isListening = false;
+  let ttsUtterance = null;
+  let isSpeaking = false;
+
+  function initRecognition() {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) { alert('Voice search is not supported in this browser. Try Chrome or Edge.'); return null; }
+    const r = new SR();
+    r.continuous = false;
+    r.interimResults = true;
+    r.lang = 'en-US';
+
+    r.onstart = () => {
+      isListening = true;
+      document.getElementById('mic-btn').classList.add('listening');
+      document.getElementById('voice-banner').classList.add('show');
+      document.getElementById('voice-text').textContent = 'Listening… speak now';
+    };
+
+    r.onresult = (e) => {
+      const transcript = Array.from(e.results).map(r => r[0].transcript).join('');
+      document.getElementById('query').value = transcript;
+      document.getElementById('voice-text').textContent = 'Heard: "' + transcript + '"';
+    };
+
+    r.onend = () => {
+      isListening = false;
+      document.getElementById('mic-btn').classList.remove('listening');
+      document.getElementById('voice-banner').classList.remove('show');
+      const q = document.getElementById('query').value.trim();
+      if (q) startSearch();
+    };
+
+    r.onerror = (e) => {
+      isListening = false;
+      document.getElementById('mic-btn').classList.remove('listening');
+      document.getElementById('voice-banner').classList.remove('show');
+      if (e.error !== 'no-speech') console.warn('Speech error:', e.error);
+    };
+
+    return r;
+  }
+
+  function toggleMic() {
+    if (isListening) {
+      if (recognition) recognition.stop();
+      return;
+    }
+    if (!recognition) recognition = initRecognition();
+    if (!recognition) return;
+    try { recognition.start(); } catch(e) { recognition = null; }
+  }
+
+  // Text-to-speech: read the active summary tab aloud
+  function toggleReadAloud() {
+    if (isSpeaking) {
+      window.speechSynthesis.cancel();
+      isSpeaking = false;
+      document.getElementById('read-aloud-btn').classList.remove('speaking');
+      document.getElementById('read-aloud-btn').innerHTML = '🔊 Read aloud';
+      return;
+    }
+    const content = summaryState[activeTab]?.raw;
+    if (!content) return;
+    // Strip markdown syntax for clean speech
+    const plain = content
+      .replace(/#{1,6}\s*/g, '')
+      .replace(/\*\*(.*?)\*\*/g, '$1')
+      .replace(/\*(.*?)\*/g, '$1')
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+      .replace(/`[^`]+`/g, '')
+      .replace(/^[-*]\s+/gm, '')
+      .replace(/\n{2,}/g, '. ')
+      .trim();
+
+    ttsUtterance = new SpeechSynthesisUtterance(plain);
+    ttsUtterance.rate = 0.95;
+    ttsUtterance.pitch = 1;
+    ttsUtterance.onend = () => {
+      isSpeaking = false;
+      document.getElementById('read-aloud-btn').classList.remove('speaking');
+      document.getElementById('read-aloud-btn').innerHTML = '🔊 Read aloud';
+    };
+    isSpeaking = true;
+    document.getElementById('read-aloud-btn').classList.add('speaking');
+    document.getElementById('read-aloud-btn').innerHTML = '⏹ Stop';
+    window.speechSynthesis.speak(ttsUtterance);
+  }
+
+  // Auto-read when all summaries done (optional — triggered on 'done' event)
+  function autoReadSummary() {
+    const btn = document.getElementById('read-aloud-btn');
+    if (btn && !isSpeaking) toggleReadAloud();
+  }
 
 </script>
 </body>
