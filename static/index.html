@@ -417,8 +417,9 @@
 
     /* ── Mobile (iPhone 17 Pro and up: 393px) ── */
     @media (max-width: 640px) {
-      header { padding: 10px 16px; gap: 8px; }
+      header { padding: 10px 16px; gap: 6px; }
       header h1 { font-size: 15px; }
+      .header-provider-label { display: none; }
       .badge, .free-badge { font-size: 9px; padding: 2px 6px; }
       main { padding: 12px 12px 60px; }
 
@@ -1750,6 +1751,16 @@
 <header>
   <div class="logo">⚡</div>
   <h1>Pulse</h1>
+  <div style="display:flex;align-items:center;gap:6px;margin-left:auto;flex-shrink:0">
+    <label for="provider-select" style="font-size:11px;color:var(--muted);white-space:nowrap" class="header-provider-label">Provider:</label>
+    <select id="provider-select" class="theme-sel" style="margin-left:0" onchange="onProviderChange()" title="AI provider">
+      <option value="groq">Groq</option>
+      <option value="ollama">Ollama</option>
+    </select>
+    <select id="model-select" class="theme-sel" style="margin-left:0" title="Model">
+      <option value="llama-3.3-70b-versatile">llama-3.3-70b-versatile</option>
+    </select>
+  </div>
   <select class="theme-sel" id="theme-select" onchange="applyTheme(this.value)" title="Switch theme">
     <option value="grey">🔘 Grey</option>
     <option value="light">⬜ Light</option>
@@ -1952,11 +1963,7 @@
           <input type="checkbox" id="fetch-content" checked />
           <label for="fetch-content">Fetch full page content (improves summary)</label>
         </div>
-        <div style="display:flex;align-items:center;gap:9px;margin-left:auto">
-          <label for="model-select" style="font-size:12px;color:var(--muted)">Model:</label>
-          <select id="model-select" style="background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;padding:4px 8px;cursor:pointer;outline:none">
-            <option value="qwen3:8b">qwen3:8b (recommended)</option>
-          </select>
+        <div style="display:flex;align-items:center;gap:9px;margin-left:auto;flex-wrap:wrap">
         </div>
       </div>
     </div>
@@ -2145,6 +2152,7 @@
       concurrency:   parseInt(document.getElementById('concurrency').value),
       fetch_content: document.getElementById('fetch-content').checked,
       model:         document.getElementById('model-select').value,
+      provider:      document.getElementById('provider-select')?.value || 'groq',
       summary_depth: 'all',
     };
 
@@ -2256,29 +2264,35 @@
     if (e.key === 'Enter') startSearch();
   });
 
-  // Populate model dropdown from /models
+  // Provider + model dropdowns
+  let _providerModels = { groq: [], ollama: [] };
+
+  function populateModelSel(models) {
+    const sel = document.getElementById('model-select');
+    sel.innerHTML = '';
+    models.forEach((m, i) => {
+      const opt = document.createElement('option');
+      opt.value = m;
+      opt.textContent = i === 0 ? m + ' ★' : m;
+      if (i === 0) opt.selected = true;
+      sel.appendChild(opt);
+    });
+  }
+
+  function onProviderChange() {
+    const provider = document.getElementById('provider-select').value;
+    const models = _providerModels[provider];
+    if (models && models.length) populateModelSel(models);
+  }
+
   (async () => {
     try {
-      const models = await fetch('/models').then(r => r.json());
-      const sel = document.getElementById('model-select');
-      if (models.length) {
-        sel.innerHTML = '';
-        const preferred = ['qwen3:8b', 'gemma2:9b', 'llama3.1:8b-32k', 'llama3.1:8b', 'qwen2.5:7b', 'mistral:7b'];
-        models.sort((a, b) => {
-          const ia = preferred.indexOf(a), ib = preferred.indexOf(b);
-          if (ia !== -1 && ib !== -1) return ia - ib;
-          if (ia !== -1) return -1;
-          if (ib !== -1) return 1;
-          return a.localeCompare(b);
-        });
-        models.forEach((m, i) => {
-          const opt = document.createElement('option');
-          opt.value = m;
-          opt.textContent = i === 0 ? m + ' ★' : m;
-          if (i === 0) opt.selected = true;
-          sel.appendChild(opt);
-        });
-      }
+      const data = await fetch('/providers').then(r => r.json());
+      _providerModels.groq   = data.groq   || [];
+      _providerModels.ollama = data.ollama || [];
+      // Populate with groq models by default
+      const sel = document.getElementById('provider-select');
+      onProviderChange();
     } catch {}
   })();
 
@@ -2624,7 +2638,7 @@
       const resp = await fetch('/live/summarize', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ title, url, snippet, model }),
+        body: JSON.stringify({ title, url, snippet, model, provider: document.getElementById('provider-select')?.value || 'groq' }),
       });
       const reader = resp.body.getReader();
       const dec = new TextDecoder();
@@ -2743,7 +2757,7 @@
       const resp = await fetch('/live/summarize', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ title, url, snippet, model }),
+        body: JSON.stringify({ title, url, snippet, model, provider: document.getElementById('provider-select')?.value || 'groq' }),
       });
       const reader = resp.body.getReader();
       const dec = new TextDecoder();
@@ -3497,7 +3511,7 @@
       const resp = await fetch('/search/ai-summary', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({q, articles: articles.slice(0,15), model})
+        body: JSON.stringify({q, articles: articles.slice(0,15), model, provider: document.getElementById('provider-select')?.value || 'groq'})
       });
       const reader = resp.body.getReader();
       const dec = new TextDecoder();
@@ -3663,7 +3677,7 @@
       const resp = await fetch('/digest/generate', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({topic, hours: digestHours, model})
+        body: JSON.stringify({topic, hours: digestHours, model, provider: document.getElementById('provider-select')?.value || 'groq'})
       });
       if (!resp.ok) {
         const err = await resp.json().catch(() => ({error: 'Server error ' + resp.status}));

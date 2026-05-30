@@ -10,3 +10,5 @@ venv/
 *.sh
 mobile_patch*.py
 fancy_search.py
+articles.db
+/tmp/

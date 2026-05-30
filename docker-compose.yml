@@ -3,11 +3,6 @@ services:
     build: .
     ports:
       - "8000:8000"
-    volumes:
-      - .:/app
-    environment:
-      - AI_BASE_URL=https://api.groq.com/openai/v1
-      - AI_MODEL=llama-3.3-70b-versatile
-      - AI_API_KEY=${AI_API_KEY}
+    env_file:
+      - .env
     restart: unless-stopped
-    command: ["python", "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]

@@ -20,6 +20,7 @@ COPY static/ static/
 ENV AI_BASE_URL=https://api.groq.com/openai/v1
 ENV AI_MODEL=llama-3.3-70b-versatile
 ENV AI_API_KEY=
+ENV OLLAMA_BASE_URL=http://100.84.196.88:11434/v1
 
 EXPOSE 8000
 

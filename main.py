@@ -3,6 +3,7 @@ import datetime
 import json
 import os
 import re
+import socket
 import sqlite3
 import threading
 import time as _time_mod
@@ -21,6 +22,7 @@ from pydantic import BaseModel
 load_dotenv()
 
 AI_BASE_URL = os.environ.get("AI_BASE_URL", "https://api.groq.com/openai/v1")
+OLLAMA_BASE_URL = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434/v1")
 AI_API_KEY = os.environ.get("AI_API_KEY", "")
 DEFAULT_MODEL = os.environ.get("AI_MODEL", "llama-3.3-70b-versatile")
 
@@ -204,6 +206,7 @@ class SearchRequest(BaseModel):
     model: str = DEFAULT_MODEL
     summary_depth: str = "all"  # ultra_short | summary | detailed | all
     timelimit: str | None = None  # d | w | m | y | None
+    provider: str = "groq"
 
 
 def _ddg_search_sync(query: str, max_results: int, timelimit: str | None = None) -> list:
@@ -338,8 +341,11 @@ async def stream_search(req: SearchRequest) -> AsyncGenerator[str, None]:
         context = "\n\n".join(context_parts)
 
         prompt = _MATH_HINT + _build_prompt(depth, req.query, context)
-        async for chunk in _ai_stream(req.model, prompt):
-            yield evt({"type": "summary_chunk", "text": chunk, "depth": depth})
+        try:
+            async for chunk in _ai_stream(req.model, prompt, req.provider):
+                yield evt({"type": "summary_chunk", "text": chunk, "depth": depth})
+        except Exception as exc:
+            yield evt({"type": "summary_chunk", "text": f"*Error generating {depth} summary: {exc}*", "depth": depth})
 
         yield evt({"type": "summary_done", "depth": depth})
 
@@ -349,10 +355,16 @@ async def stream_search(req: SearchRequest) -> AsyncGenerator[str, None]:
 # ── Groq / OpenAI-compatible helpers ────────────────────────────────────────
 
 
-async def _ai_stream(model: str, prompt: str) -> AsyncGenerator[str, None]:
-    """Stream tokens from a Groq (OpenAI-compatible) endpoint."""
+async def _ai_stream(model: str, prompt: str, provider: str = "groq") -> AsyncGenerator[str, None]:
+    """Stream tokens from an OpenAI-compatible endpoint (Groq or Ollama)."""
+    if provider == "ollama":
+        _base_url = OLLAMA_BASE_URL
+        _api_key = "ollama"
+    else:
+        _base_url = AI_BASE_URL
+        _api_key = AI_API_KEY
     headers = {
-        "Authorization": f"Bearer {AI_API_KEY}",
+        "Authorization": f"Bearer {_api_key}",
         "Content-Type": "application/json",
     }
     payload = {
@@ -374,11 +386,20 @@ async def _ai_stream(model: str, prompt: str) -> AsyncGenerator[str, None]:
         "stream": True,
     }
 
+    _transport = httpx.AsyncHTTPTransport(
+        socket_options=[
+            (socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1),
+            (socket.IPPROTO_TCP, socket.TCP_KEEPIDLE, 15),
+            (socket.IPPROTO_TCP, socket.TCP_KEEPINTVL, 5),
+            (socket.IPPROTO_TCP, socket.TCP_KEEPCNT, 6),
+        ]
+    )
+    _timeout = httpx.Timeout(connect=30.0, read=None, write=None, pool=None)
     try:
-        async with httpx.AsyncClient(timeout=None) as client:
+        async with httpx.AsyncClient(transport=_transport, timeout=_timeout) as client:
             async with client.stream(
                 "POST",
-                f"{AI_BASE_URL}/chat/completions",
+                f"{_base_url}/chat/completions",
                 headers=headers,
                 json=payload,
             ) as resp:
@@ -400,7 +421,9 @@ async def _ai_stream(model: str, prompt: str) -> AsyncGenerator[str, None]:
                     if chunk:
                         yield chunk
     except httpx.ConnectError:
-        yield f"\n\n*Error: Could not connect to AI endpoint at {AI_BASE_URL}.*"
+        yield f"\n\n*Error: Could not connect to AI endpoint at {_base_url}.*"
+    except (httpx.ReadTimeout, httpx.WriteTimeout, httpx.PoolTimeout):
+        yield f"\n\n*Error: AI endpoint timed out. The model may be loading — please try again.*"
     except Exception as exc:
         yield f"\n\n*Summarization error: {exc}*"
 
@@ -411,6 +434,38 @@ async def _ai_stream(model: str, prompt: str) -> AsyncGenerator[str, None]:
 async def list_models():
     """Return the configured model."""
     return JSONResponse([DEFAULT_MODEL])
+
+
+@app.get("/providers")
+async def list_providers():
+    """Return available providers and their model lists."""
+    groq_models = [
+        "llama-3.3-70b-versatile",
+        "llama-3.1-8b-instant",
+        "llama3-70b-8192",
+        "llama3-8b-8192",
+        "mixtral-8x7b-32768",
+        "gemma2-9b-it",
+        "gemma-7b-it",
+    ]
+    ollama_models = []
+    try:
+        async with httpx.AsyncClient(timeout=3.0) as client:
+            ollama_root = OLLAMA_BASE_URL.rstrip("/")
+            if ollama_root.endswith("/v1"):
+                ollama_root = ollama_root[:-3]
+            resp = await client.get(f"{ollama_root}/api/tags")
+            if resp.status_code == 200:
+                data = resp.json()
+                ollama_models = [m["name"] for m in data.get("models", [])]
+    except Exception:
+        pass
+    if not ollama_models:
+        ollama_models = ["llama3.2", "qwen3:8b", "mistral", "gemma3:4b", "phi4", "deepseek-r1:7b"]
+    return JSONResponse({
+        "groq": groq_models,
+        "ollama": ollama_models,
+    })
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -1132,6 +1187,7 @@ class ArticleSummarizeRequest(BaseModel):
     url: str
     snippet: str
     model: str = DEFAULT_MODEL
+    provider: str = "groq"
 
 
 @app.post("/live/summarize")
@@ -1164,8 +1220,11 @@ async def summarize_article(req: ArticleSummarizeRequest):
     )
 
     async def generate():
-        async for chunk in _ai_stream(req.model, prompt):
-            yield f"data: {json.dumps({'text': chunk})}\n\n"
+        try:
+            async for chunk in _ai_stream(req.model, prompt, req.provider):
+                yield f"data: {json.dumps({'text': chunk})}\n\n"
+        except Exception as exc:
+            yield f"data: {json.dumps({'text': f'*Error: {exc}*'})}\n\n"
         yield f"data: {json.dumps({'done': True})}\n\n"
 
     return StreamingResponse(
@@ -1225,6 +1284,7 @@ class SearchSummaryRequest(BaseModel):
     q: str
     articles: list[dict]
     model: str = DEFAULT_MODEL
+    provider: str = "groq"
 
 
 @app.post("/search/ai-summary")
@@ -1246,7 +1306,7 @@ async def search_ai_summary(req: SearchSummaryRequest):
     )
 
     async def generate():
-        async for chunk in _ai_stream(req.model, prompt):
+        async for chunk in _ai_stream(req.model, prompt, req.provider):
             yield f"data: {json.dumps({'text': chunk})}\n\n"
         yield f"data: {json.dumps({'done': True})}\n\n"
 
@@ -1325,6 +1385,7 @@ class _DigestReq(BaseModel):
     topic: str
     hours: float = 24.0
     model: str = DEFAULT_MODEL
+    provider: str = "groq"
 
 
 @app.get("/digest/stats")
@@ -1415,8 +1476,8 @@ async def digest_generate(req: _DigestReq):
         try:
             async with httpx.AsyncClient(timeout=180) as client:
                 async with client.stream(
-                    "POST", f"{AI_BASE_URL}/chat/completions",
-                    headers={"Authorization": f"Bearer {AI_API_KEY}", "Content-Type": "application/json"},
+                    "POST", f"{OLLAMA_BASE_URL if req.provider == 'ollama' else AI_BASE_URL}/chat/completions",
+                    headers={"Authorization": f"Bearer {'ollama' if req.provider == 'ollama' else AI_API_KEY}", "Content-Type": "application/json"},
                     json={"model": req.model, "messages": [{"role": "user", "content": prompt}], "stream": True},
                 ) as r:
                     async for line in r.aiter_lines():
