@@ -1,14 +1,12 @@
 import { useRef, useState } from 'react'
-import type { Providers, SearchRequest } from '../../types'
+import type { SearchRequest } from '../../types'
 
 interface SearchCardProps {
   onSearch: (params: Omit<SearchRequest, 'model' | 'provider'>) => void
   isSearching: boolean
   onCancel: () => void
-  provider: string
   model: string
-  providers: Providers
-  onProviderChange: (p: string) => void
+  models: string[]
   onModelChange: (m: string) => void
 }
 
@@ -24,10 +22,8 @@ export function SearchCard({
   onSearch,
   isSearching,
   onCancel,
-  provider,
   model,
-  providers,
-  onProviderChange,
+  models,
   onModelChange,
 }: SearchCardProps) {
   const [query, setQuery] = useState('')
@@ -37,8 +33,6 @@ export function SearchCard({
   const [timelimit, setTimelimit] = useState('')
   const [isListening, setIsListening] = useState(false)
   const recognitionRef = useRef<SpeechRecognition | null>(null)
-
-  const models = providers[provider as keyof typeof providers] ?? providers.groq
 
   const handleSearch = () => {
     if (!query.trim() || isSearching) return
@@ -185,22 +179,6 @@ export function SearchCard({
               {TIME_LIMITS.map((t) => (
                 <option key={t.value} value={t.value}>{t.label}</option>
               ))}
-            </select>
-
-            <label htmlFor="search-provider-select" style={{ fontSize: 12, color: 'var(--muted)' }}>AI:</label>
-            <select
-              id="search-provider-select"
-              className="app-select"
-              value={provider}
-              onChange={(e) => {
-                onProviderChange(e.target.value)
-                const ms = providers[e.target.value as keyof typeof providers] ?? []
-                if (ms.length) onModelChange(ms[0])
-              }}
-              aria-label="AI provider"
-            >
-              <option value="groq">Groq</option>
-              <option value="ollama">Ollama</option>
             </select>
 
             <select

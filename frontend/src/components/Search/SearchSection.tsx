@@ -9,11 +9,10 @@ import type { SearchRequest } from '../../types'
 export function SearchSection() {
   const { state, search, cancel, availableDepths } = useSearch()
   const { providers } = useProviders()
-  const [provider, setProvider] = useState('groq')
   const [model, setModel] = useState('llama-3.3-70b-versatile')
 
   const handleSearch = (params: Omit<SearchRequest, 'model' | 'provider'>) => {
-    search({ ...params, model, provider })
+    search({ ...params, model, provider: 'groq' })
   }
 
   const progressPct = state.progress
@@ -30,10 +29,8 @@ export function SearchSection() {
         onSearch={handleSearch}
         isSearching={state.isSearching}
         onCancel={cancel}
-        provider={provider}
         model={model}
-        providers={providers}
-        onProviderChange={setProvider}
+        models={providers.groq ?? ['llama-3.3-70b-versatile']}
         onModelChange={setModel}
       />
 

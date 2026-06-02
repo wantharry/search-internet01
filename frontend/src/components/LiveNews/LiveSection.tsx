@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { useLiveNews } from '../../hooks/useLiveNews'
 import { LiveCard } from './LiveCard'
-import { useTTS } from '../../contexts/TTSContext'
 
 const TOPICS = [
   { value: 'all', label: '📰 All News' },
@@ -47,7 +46,6 @@ export function LiveSection() {
   const [interval, setInterval] = useState(60)
   const [sort, setSort] = useState('newest')
   const [search, setSearch] = useState('')
-  const { isMuted, toggleMute } = useTTS()
 
   // Compute category key from topic + region
   const category = (() => {
@@ -134,15 +132,6 @@ export function LiveSection() {
           data-testid="refresh-btn"
         >
           ↻ Refresh
-        </button>
-
-        <button
-          className={`live-mute-btn${isMuted ? ' muted' : ''}`}
-          onClick={toggleMute}
-          aria-label={isMuted ? 'Unmute sound' : 'Mute all sound'}
-          title={isMuted ? 'Sound off — click to unmute' : 'Mute all sound'}
-        >
-          {isMuted ? '🔇 Muted' : '🔊 Sound'}
         </button>
 
         {countdown > 0 && !loading && (

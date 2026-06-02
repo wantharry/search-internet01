@@ -21,12 +21,11 @@ function qualityRank(v: SpeechSynthesisVoice): number {
 
 export function Header({ className }: HeaderProps) {
   const { providers } = useProviders()
-  const { voices, selectedVoice, setSelectedVoice, isMuted, toggleMute } = useTTS()
-  const [provider, setProvider] = useState('groq')
+  const { voices, selectedVoice, setSelectedVoice } = useTTS()
   const [model, setModel] = useState('llama-3.3-70b-versatile')
   const [theme, setTheme] = useState('dark')
 
-  const models = providers[provider as keyof typeof providers] ?? providers.groq
+  const models = providers.groq ?? ['llama-3.3-70b-versatile']
 
   // English voices sorted by quality tier then name
   const englishVoices = voices
@@ -46,22 +45,6 @@ export function Header({ className }: HeaderProps) {
       <span className="app-free-badge">Free</span>
 
       <div className="app-header-right">
-        <label htmlFor="provider-select" className="header-label">Provider:</label>
-        <select
-          id="provider-select"
-          className="app-select"
-          value={provider}
-          onChange={(e) => {
-            setProvider(e.target.value)
-            const defaultModels = providers[e.target.value as keyof typeof providers] ?? []
-            if (defaultModels.length) setModel(defaultModels[0])
-          }}
-          aria-label="AI provider"
-        >
-          <option value="groq">Groq</option>
-          <option value="ollama">Ollama</option>
-        </select>
-
         <select
           id="model-select"
           className="app-select"
@@ -105,15 +88,6 @@ export function Header({ className }: HeaderProps) {
           <option value="light">⬜ Light</option>
           <option value="grey">🔘 Grey</option>
         </select>
-
-        <button
-          className={`app-mute-btn${isMuted ? ' muted' : ''}`}
-          onClick={toggleMute}
-          aria-label={isMuted ? 'Unmute sound' : 'Mute sound'}
-          title={isMuted ? 'Sound off — click to unmute' : 'Mute all sound'}
-        >
-          {isMuted ? '🔇' : '🔊'}
-        </button>
       </div>
     </header>
   )

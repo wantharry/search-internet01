@@ -29,24 +29,14 @@ describe('Header', () => {
     expect(screen.getByText('Free')).toBeInTheDocument()
   })
 
-  it('shows provider and model selects', () => {
+  it('shows model select', () => {
     renderHeader()
-    expect(screen.getByLabelText('AI provider')).toBeInTheDocument()
     expect(screen.getByLabelText('AI model')).toBeInTheDocument()
   })
 
   it('shows theme select', () => {
     renderHeader()
     expect(screen.getByLabelText('Color theme')).toBeInTheDocument()
-  })
-
-  it('changes provider and resets model', async () => {
-    const user = userEvent.setup()
-    renderHeader()
-    const providerSel = screen.getByLabelText('AI provider')
-    await user.selectOptions(providerSel, 'ollama')
-    expect(providerSel).toHaveValue('ollama')
-    expect(screen.getByLabelText('AI model')).toHaveValue('llama3.2')
   })
 
   it('applies theme to document element', async () => {

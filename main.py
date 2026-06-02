@@ -168,7 +168,7 @@ def _build_prompt(depth: str, query: str, context: str) -> str:
         return (
             f'You are an automated summarization engine. The user searched for: "{query}"\n'
             f"Below are the search results. Your ONLY job is to output this exact format:\n\n"
-            f"[one sentence, max 25 words summarising the topic]\n\n"
+            f"[two sentences, max 50 words summarising the topic]\n\n"
             f"**Key Points**:\n- [key point 1]\n- [key point 2]\n- [key point 3]\n\n"
             f"Output ONLY the above. No greetings, no questions, no suggestions. Begin immediately.\n\n"
             f"Search Results:\n{context}"
@@ -317,8 +317,8 @@ async def stream_search(req: SearchRequest) -> AsyncGenerator[str, None]:
 
     # --- 3. AI summarization (streaming via Groq) ---
     _DEPTH_LABELS = {"ultra_short": "Quick", "summary": "Summary", "detailed": "Detailed"}
-    _MAX_FOR    = {"ultra_short": 8, "summary": 10, "detailed": 12}
-    _LEN_FOR    = {"ultra_short": 300, "summary": 500, "detailed": 700}
+    _MAX_FOR    = {"ultra_short": 16, "summary": 20, "detailed": 24}
+    _LEN_FOR    = {"ultra_short": 600, "summary": 1000, "detailed": 1400}
 
     _valid_depths = {"ultra_short", "summary", "detailed"}
     depths_to_run = (
@@ -1248,11 +1248,11 @@ async def summarize_article(req: ArticleSummarizeRequest):
                 _article = _soup.find("article") or _soup.find("main") or _soup
                 _full = " ".join(_article.get_text(separator=" ", strip=True).split())
                 if len(_full) > 200:
-                    body_text = _full[:5000]
+                    body_text = _full[:10000]
         except Exception:
             pass
     prompt = (
-        f"Summarize this news article in 3-4 sentences. Be factual and concise.\n\n"
+        f"Summarize this news article in 6-8 sentences covering all key facts. Be factual and detailed.\n\n"
         f"Title: {req.title}\n"
         f"Article content: {body_text}\n\n"
         f"Write the summary immediately. No preamble."

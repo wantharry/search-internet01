@@ -1,6 +1,5 @@
 import { useEffect, useRef } from 'react'
 import { useAlerts } from '../../hooks/useAlerts'
-import { useProviders } from '../../hooks/useProviders'
 import { AlertCard } from './AlertCard'
 
 interface AlertsSectionProps {
@@ -18,8 +17,7 @@ export function AlertsSection({ onUnreadChange }: AlertsSectionProps) {
     clearAll,
     toggleSound,
   } = useAlerts()
-  const { providers } = useProviders()
-  const model = providers.groq[0] ?? 'llama-3.3-70b-versatile'
+  const model = 'llama-3.3-70b-versatile'
 
   const prevUnread = useRef(unreadCount)
   useEffect(() => {

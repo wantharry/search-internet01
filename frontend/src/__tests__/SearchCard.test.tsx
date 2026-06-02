@@ -2,21 +2,15 @@ import { render, screen, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { SearchCard } from '../components/Search/SearchCard'
-import type { Providers } from '../types'
 
-const PROVIDERS: Providers = {
-  groq: ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant'],
-  ollama: ['llama3.2'],
-}
+const MODELS = ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant']
 
 const DEFAULT_PROPS = {
   onSearch: vi.fn(),
   isSearching: false,
   onCancel: vi.fn(),
-  provider: 'groq',
   model: 'llama-3.3-70b-versatile',
-  providers: PROVIDERS,
-  onProviderChange: vi.fn(),
+  models: MODELS,
   onModelChange: vi.fn(),
 }
 
