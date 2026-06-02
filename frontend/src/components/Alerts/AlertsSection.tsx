@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useAlerts } from '../../hooks/useAlerts'
 import { AlertCard } from './AlertCard'
 
@@ -18,6 +18,7 @@ export function AlertsSection({ onUnreadChange }: AlertsSectionProps) {
     toggleSound,
   } = useAlerts()
   const model = 'llama-3.3-70b-versatile'
+  const [search, setSearch] = useState('')
 
   const prevUnread = useRef(unreadCount)
   useEffect(() => {
@@ -26,6 +27,17 @@ export function AlertsSection({ onUnreadChange }: AlertsSectionProps) {
       prevUnread.current = unreadCount
     }
   }, [unreadCount, onUnreadChange])
+
+  const displayed = search.trim()
+    ? alerts.filter((a) => {
+        const q = search.toLowerCase()
+        return (
+          a.title.toLowerCase().includes(q) ||
+          a.snippet.toLowerCase().includes(q) ||
+          a.source.toLowerCase().includes(q)
+        )
+      })
+    : alerts
 
   return (
     <section id="panel-alerts" role="tabpanel" aria-label="Breaking news alerts">
@@ -57,14 +69,26 @@ export function AlertsSection({ onUnreadChange }: AlertsSectionProps) {
         <span className="alerts-status" aria-live="polite">{status}</span>
       </div>
 
+      <div style={{ marginBottom: 14 }}>
+        <input
+          type="text"
+          className="search-input"
+          style={{ paddingLeft: 16, fontSize: 14 }}
+          placeholder="🔍 Search alerts…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          aria-label="Filter alerts"
+        />
+      </div>
+
       <div className="alerts-stack" role="list" aria-label="News alerts" data-testid="alerts-list">
-        {alerts.length === 0 && (
+        {displayed.length === 0 && (
           <div className="alerts-empty">
             <div style={{ fontSize: 40, marginBottom: 12 }}>🔔</div>
-            <p>No alerts yet — breaking news will appear here automatically.</p>
+            <p>{search.trim() ? 'No alerts match your search.' : 'No alerts yet — breaking news will appear here automatically.'}</p>
           </div>
         )}
-        {alerts.map((alert) => (
+        {displayed.map((alert) => (
           <AlertCard key={alert.url} alert={alert} onDismiss={dismiss} model={model} provider="groq" />
         ))}
       </div>

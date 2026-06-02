@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useLiveNews } from '../../hooks/useLiveNews'
 import { LiveCard } from './LiveCard'
 
@@ -27,14 +27,6 @@ const REGIONS = [
   { value: 'mideast', label: '🕌 Mid East' },
 ]
 
-const INTERVALS = [
-  { value: 60, label: '↻ 1 min' },
-  { value: 300, label: '↻ 5 min' },
-  { value: 600, label: '↻ 10 min' },
-  { value: 1800, label: '↻ 30 min' },
-  { value: 3600, label: '↻ 1 hr' },
-]
-
 const SORT_OPTIONS = [
   { value: 'newest', label: '⬇ Newest' },
   { value: 'rated', label: '⭐ Top Rated' },
@@ -43,7 +35,6 @@ const SORT_OPTIONS = [
 export function LiveSection() {
   const [topic, setTopic] = useState('all')
   const [region, setRegion] = useState('usa')
-  const [interval, setInterval] = useState(60)
   const [sort, setSort] = useState('newest')
   const [search, setSearch] = useState('')
 
@@ -54,10 +45,31 @@ export function LiveSection() {
     return `${topic}-${region}`
   })()
 
-  const { articles, loading, error, countdown, refresh, lastRefresh } = useLiveNews(
-    category,
-    interval,
-  )
+  const { articles, loading, error, fromRss, refresh, lastRefresh } = useLiveNews(category)
+
+  const [refreshMsg, setRefreshMsg] = useState<string | null>(null)
+  const prevLoadingRef = useRef(false)
+  const refreshTriggeredRef = useRef(false)
+
+  // Show article count after a user-triggered refresh completes
+  useEffect(() => {
+    if (prevLoadingRef.current && !loading && refreshTriggeredRef.current) {
+      refreshTriggeredRef.current = false
+      const msg = fromRss > 0 ? `+${fromRss} new` : 'Up to date'
+      setRefreshMsg(msg)
+      const t = setTimeout(() => setRefreshMsg(null), 3000)
+      return () => clearTimeout(t)
+    }
+    prevLoadingRef.current = loading
+  }, [loading, fromRss])
+
+  const handleRefresh = () => {
+    refreshTriggeredRef.current = true
+    refresh()
+    requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    })
+  }
 
   // Filter & sort
   let displayed = articles
@@ -103,18 +115,6 @@ export function LiveSection() {
 
         <select
           className="live-sel"
-          value={interval}
-          onChange={(e) => setInterval(+e.target.value)}
-          aria-label="Refresh interval"
-          id="live-interval"
-        >
-          {INTERVALS.map((i) => (
-            <option key={i.value} value={i.value}>{i.label}</option>
-          ))}
-        </select>
-
-        <select
-          className="live-sel"
           value={sort}
           onChange={(e) => setSort(e.target.value)}
           aria-label="Sort order"
@@ -124,21 +124,6 @@ export function LiveSection() {
             <option key={s.value} value={s.value}>{s.label}</option>
           ))}
         </select>
-
-        <button
-          className="live-refresh-btn"
-          onClick={refresh}
-          aria-label="Refresh now"
-          data-testid="refresh-btn"
-        >
-          ↻ Refresh
-        </button>
-
-        {countdown > 0 && !loading && (
-          <span className="live-countdown" aria-live="polite">
-            {countdown}s
-          </span>
-        )}
 
         <span className="live-status">
           {loading
@@ -162,6 +147,16 @@ export function LiveSection() {
           data-testid="headline-search"
         />
       </div>
+
+      <button
+        className="live-float-refresh"
+        onClick={handleRefresh}
+        aria-label="Refresh and scroll to top"
+        disabled={loading}
+        title="Pull latest &amp; scroll to top"
+      >
+        {loading ? '⏳' : (refreshMsg ?? '↑ Refresh')}
+      </button>
 
       <div className="live-grid" role="list" aria-label="News articles" data-testid="live-grid">
         {loading && <div className="live-loading">Loading headlines…</div>}

@@ -12,7 +12,7 @@ interface LiveNewsState {
   lastRefresh: Date | null
 }
 
-export function useLiveNews(category: string, refreshInterval = 60) {
+export function useLiveNews(category: string) {
   const [state, setState] = useState<LiveNewsState>({
     articles: [],
     loading: false,
@@ -22,9 +22,6 @@ export function useLiveNews(category: string, refreshInterval = 60) {
     fromRss: 0,
     lastRefresh: null,
   })
-  const [countdown, setCountdown] = useState(refreshInterval)
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
-  const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const categoryRef = useRef(category)
   categoryRef.current = category
 
@@ -55,32 +52,9 @@ export function useLiveNews(category: string, refreshInterval = 60) {
     void load(category)
   }, [category, load])
 
-  // Auto-refresh timer
-  useEffect(() => {
-    if (timerRef.current) clearInterval(timerRef.current)
-    if (countdownRef.current) clearInterval(countdownRef.current)
-
-    setCountdown(refreshInterval)
-
-    timerRef.current = setInterval(() => {
-      void load(categoryRef.current)
-      setCountdown(refreshInterval)
-    }, refreshInterval * 1000)
-
-    countdownRef.current = setInterval(() => {
-      setCountdown((c) => Math.max(0, c - 1))
-    }, 1000)
-
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current)
-      if (countdownRef.current) clearInterval(countdownRef.current)
-    }
-  }, [refreshInterval, load])
-
   const refresh = useCallback(() => {
     void load(categoryRef.current)
-    setCountdown(refreshInterval)
-  }, [load, refreshInterval])
+  }, [load])
 
-  return { ...state, countdown, refresh, load }
+  return { ...state, refresh, load }
 }

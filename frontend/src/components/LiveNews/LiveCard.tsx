@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react'
 import { marked } from 'marked'
 import { streamSearch } from '../../api/client'
 import { useTTS } from '../../contexts/TTSContext'
+import { CardActions } from '../common/CardActions'
 import type { Article } from '../../types'
 
 function renderMarkdown(text: string): string {
@@ -28,6 +29,18 @@ function timeAgo(published: string): string {
   } catch {
     return published.slice(0, 16)
   }
+}
+
+function formatFetchedAt(ts: number): string {
+  if (!ts) return ''
+  const d = new Date(ts * 1000)
+  return d.toLocaleString([], {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
 }
 
 export function LiveCard({ article, index, model, provider }: LiveCardProps) {
@@ -77,7 +90,14 @@ export function LiveCard({ article, index, model, provider }: LiveCardProps) {
     if (isThisReading) {
       stop()
     } else {
-      speak(`${article.title}. ${article.snippet}`, ttsId)
+      // If a summary has been generated, read it; otherwise read title + snippet
+      const summaryText = aiSummary
+        ? aiSummary.replace(/<[^>]+>/g, '').trim()
+        : ''
+      const text = summaryText
+        ? `${article.title}. ${summaryText}`
+        : `${article.title}. ${article.snippet}`
+      speak(text, ttsId)
     }
   }
 
@@ -119,8 +139,18 @@ export function LiveCard({ article, index, model, provider }: LiveCardProps) {
       </div>
 
       {article.published && (
-        <div className="live-card-meta">{timeAgo(article.published)}</div>
+        <div className="live-card-meta">
+          {timeAgo(article.published)}
+          {article.fetched_at ? (
+            <span className="live-card-received"> · received {formatFetchedAt(article.fetched_at)}</span>
+          ) : null}
+        </div>
       )}
+      {!article.published && article.fetched_at ? (
+        <div className="live-card-meta">
+          <span className="live-card-received">received {formatFetchedAt(article.fetched_at)}</span>
+        </div>
+      ) : null}
 
       {article.snippet && (
         <p className="live-card-snippet">{article.snippet}</p>
@@ -156,7 +186,7 @@ export function LiveCard({ article, index, model, provider }: LiveCardProps) {
           ))}
         </div>
 
-        <div className="live-card-actions">
+        <CardActions article={article}>
           <button
             className="live-summarize-btn"
             onClick={handleSummarize}
@@ -170,12 +200,13 @@ export function LiveCard({ article, index, model, provider }: LiveCardProps) {
           <button
             className={`live-tts-btn${isThisReading ? ' speaking' : ''}`}
             onClick={handleTTS}
-            aria-label={isThisReading ? 'Stop reading' : 'Read aloud'}
+            aria-label={isThisReading ? 'Stop reading' : aiSummary ? 'Read summary aloud' : 'Read aloud'}
+            title={aiSummary && !isThisReading ? 'Read AI summary aloud' : undefined}
             data-testid="live-tts-btn"
           >
             {isThisReading ? '⏹' : '🔊'}
           </button>
-        </div>
+        </CardActions>
       </div>
     </article>
   )

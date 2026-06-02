@@ -1,4 +1,4 @@
-export type Tab = 'search' | 'live' | 'alerts'
+export type Tab = 'search' | 'live' | 'alerts' | 'saved'
 
 export type SummaryDepth = 'ultra_short' | 'summary' | 'detailed'
 
@@ -48,6 +48,8 @@ export interface Article {
   source: string
   topic: string
   published: string
+  published_ts: number
+  fetched_at: number
   importance: 'breaking' | 'high' | 'normal'
   score: number
 }

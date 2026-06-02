@@ -60,16 +60,9 @@ describe('useLiveNews', () => {
 
   it('provides refresh function', async () => {
     ;(getLiveFeed as ReturnType<typeof vi.fn>).mockResolvedValue({ items: [], total: 0, from_cache: 0, from_rss: 0, category: 'all' })
-    const { result } = renderHook(() => useLiveNews('all', 60))
+    const { result } = renderHook(() => useLiveNews('all'))
     await waitFor(() => expect(result.current.loading).toBe(false))
     act(() => result.current.refresh())
     await waitFor(() => expect(getLiveFeed).toHaveBeenCalledTimes(2))
-  })
-
-  it('initialises countdown to interval', async () => {
-    ;(getLiveFeed as ReturnType<typeof vi.fn>).mockResolvedValue({ items: [], total: 0, from_cache: 0, from_rss: 0, category: 'all' })
-    const { result } = renderHook(() => useLiveNews('all', 120))
-    await waitFor(() => expect(result.current.loading).toBe(false))
-    expect(result.current.countdown).toBeLessThanOrEqual(120)
   })
 })

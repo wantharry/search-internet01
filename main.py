@@ -317,8 +317,8 @@ async def stream_search(req: SearchRequest) -> AsyncGenerator[str, None]:
 
     # --- 3. AI summarization (streaming via Groq) ---
     _DEPTH_LABELS = {"ultra_short": "Quick", "summary": "Summary", "detailed": "Detailed"}
-    _MAX_FOR    = {"ultra_short": 16, "summary": 20, "detailed": 24}
-    _LEN_FOR    = {"ultra_short": 600, "summary": 1000, "detailed": 1400}
+    _MAX_FOR    = {"ultra_short": 8, "summary": 12, "detailed": 16}
+    _LEN_FOR    = {"ultra_short": 500, "summary": 900, "detailed": 1400}
 
     _valid_depths = {"ultra_short", "summary", "detailed"}
     depths_to_run = (

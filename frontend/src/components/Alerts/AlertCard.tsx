@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react'
 import { marked } from 'marked'
 import { streamSearch } from '../../api/client'
 import { useTTS } from '../../contexts/TTSContext'
+import { CardActions } from '../common/CardActions'
 import type { Alert } from '../../types'
 
 interface AlertCardProps {
@@ -17,6 +18,16 @@ function timeAgo(d: Date): string {
   if (diff < 3600) return `${Math.round(diff / 60)}m ago`
   if (diff < 86400) return `${Math.round(diff / 3600)}h ago`
   return `${Math.round(diff / 86400)}d ago`
+}
+
+function formatFetchedAt(d: Date): string {
+  return d.toLocaleString([], {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
 }
 
 function renderMarkdown(text: string): string {
@@ -74,7 +85,13 @@ export function AlertCard({ alert, onDismiss, model, provider }: AlertCardProps)
     if (isThisReading) {
       stop()
     } else {
-      speak(`${alert.title}. ${alert.snippet}`, ttsId)
+      const summaryText = aiSummary
+        ? aiSummary.replace(/<[^>]+>/g, '').trim()
+        : ''
+      const text = summaryText
+        ? `${alert.title}. ${summaryText}`
+        : `${alert.title}. ${alert.snippet}`
+      speak(text, ttsId)
     }
   }
 
@@ -103,7 +120,9 @@ export function AlertCard({ alert, onDismiss, model, provider }: AlertCardProps)
             BREAKING
           </span>
         )}
-        <span className="alert-time">{timeAgo(alert.fetchedAt)}</span>
+        <span className="alert-time">
+          {timeAgo(alert.fetchedAt)} · <span className="live-card-received">{formatFetchedAt(alert.fetchedAt)}</span>
+        </span>
       </div>
 
       <div className="alert-title">
@@ -131,25 +150,27 @@ export function AlertCard({ alert, onDismiss, model, provider }: AlertCardProps)
         </div>
       )}
 
-      <div className="live-card-actions" style={{ marginTop: 10 }}>
+      <CardActions article={alert} >
         <button
           className="live-summarize-btn"
           onClick={handleSummarize}
           disabled={summarizing}
           aria-label="Summarize with AI"
           data-testid="summarize-btn"
+          style={{ marginTop: 10 }}
         >
           ✨ {showSummary ? (aiSummary ? 'Hide' : 'Loading…') : 'Summarize'}
         </button>
         <button
           className={`live-tts-btn${isThisReading ? ' speaking' : ''}`}
           onClick={handleTTS}
-          aria-label={isThisReading ? 'Stop reading' : 'Read aloud'}
+          aria-label={isThisReading ? 'Stop reading' : aiSummary ? 'Read summary aloud' : 'Read aloud'}
+          title={aiSummary && !isThisReading ? 'Read AI summary aloud' : undefined}
           data-testid="alert-tts-btn"
         >
           {isThisReading ? '⏹' : '🔊'}
         </button>
-      </div>
+      </CardActions>
     </article>
   )
 }
