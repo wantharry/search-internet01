@@ -1,4 +1,13 @@
-# ── Build stage ──────────────────────────────────────────────
+# ── Node build stage ──────────────────────────────────────────
+FROM node:20-slim AS node-builder
+
+WORKDIR /app/frontend
+COPY frontend/package*.json ./
+RUN npm ci
+COPY frontend/ ./
+RUN npm run build
+
+# ── Python deps stage ─────────────────────────────────────────
 FROM python:3.12-slim AS builder
 
 WORKDIR /app
@@ -15,7 +24,9 @@ COPY --from=builder /install /usr/local
 
 # Copy app source
 COPY main.py .
-COPY static/ static/
+
+# Copy React build output as static/
+COPY --from=node-builder /app/frontend/dist/ static/
 
 ENV AI_BASE_URL=https://api.groq.com/openai/v1
 ENV AI_MODEL=llama-3.3-70b-versatile

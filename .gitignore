@@ -9,3 +9,5 @@ dist/
 build/
 .DS_Store
 articles.db
+node_modules/
+frontend/node_modules/

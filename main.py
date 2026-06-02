@@ -24,7 +24,12 @@ load_dotenv()
 AI_BASE_URL = os.environ.get("AI_BASE_URL", "https://api.groq.com/openai/v1")
 OLLAMA_BASE_URL = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434/v1")
 AI_API_KEY = os.environ.get("AI_API_KEY", "")
-DEFAULT_MODEL = os.environ.get("AI_MODEL", "llama-3.3-70b-versatile")
+DEFAULT_MODEL = os.environ.get("AI_MODEL", "llama-3.1-8b-instant")
+GROQ_FALLBACK_MODELS = [
+    "llama-3.1-8b-instant",
+    "gemma2-9b-it",
+    "llama3-8b-8192",
+]
 
 
 # ── Article DB ───────────────────────────────────────────────────────────────
@@ -163,9 +168,8 @@ def _build_prompt(depth: str, query: str, context: str) -> str:
         return (
             f'You are an automated summarization engine. The user searched for: "{query}"\n'
             f"Below are the search results. Your ONLY job is to output this exact format:\n\n"
-            f"**TL;DR**: [one sentence, max 25 words summarising the topic]\n\n"
+            f"[one sentence, max 25 words summarising the topic]\n\n"
             f"**Key Points**:\n- [key point 1]\n- [key point 2]\n- [key point 3]\n\n"
-            f"**Top Link**: [most useful URL]\n\n"
             f"Output ONLY the above. No greetings, no questions, no suggestions. Begin immediately.\n\n"
             f"Search Results:\n{context}"
         )
@@ -312,9 +316,9 @@ async def stream_search(req: SearchRequest) -> AsyncGenerator[str, None]:
             })
 
     # --- 3. AI summarization (streaming via Groq) ---
-    _DEPTH_LABELS = {"ultra_short": "Ultra Short", "summary": "Summary", "detailed": "Detailed"}
-    _MAX_FOR    = {"ultra_short": 10, "summary": 15, "detailed": 20}
-    _LEN_FOR    = {"ultra_short": 300, "summary": 900, "detailed": 1500}
+    _DEPTH_LABELS = {"ultra_short": "Quick", "summary": "Summary", "detailed": "Detailed"}
+    _MAX_FOR    = {"ultra_short": 8, "summary": 10, "detailed": 12}
+    _LEN_FOR    = {"ultra_short": 300, "summary": 500, "detailed": 700}
 
     _valid_depths = {"ultra_short", "summary", "detailed"}
     depths_to_run = (
@@ -356,34 +360,23 @@ async def stream_search(req: SearchRequest) -> AsyncGenerator[str, None]:
 
 
 async def _ai_stream(model: str, prompt: str, provider: str = "groq") -> AsyncGenerator[str, None]:
-    """Stream tokens from an OpenAI-compatible endpoint (Groq or Ollama)."""
+    """Stream tokens from an OpenAI-compatible endpoint with automatic model fallback on rate limits."""
     if provider == "ollama":
         _base_url = OLLAMA_BASE_URL
         _api_key = "ollama"
+        models_to_try = [model]
     else:
         _base_url = AI_BASE_URL
         _api_key = AI_API_KEY
+        seen: set = set()
+        models_to_try = []
+        for m in [model] + GROQ_FALLBACK_MODELS:
+            if m not in seen:
+                seen.add(m)
+                models_to_try.append(m)
     headers = {
         "Authorization": f"Bearer {_api_key}",
         "Content-Type": "application/json",
-    }
-    payload = {
-        "model": model,
-        "messages": [
-            {
-                "role": "system",
-                "content": (
-                    "You are a general-purpose research assistant. "
-                    "You answer questions on ANY topic — sports, history, science, "
-                    "entertainment, politics, people, culture, and more. "
-                    "Never refuse a question because it is not about programming. "
-                    "NEVER ask the user clarifying questions — always write the requested summary or analysis directly using the provided search results. "
-                    "If search results are provided, use them. Write the answer immediately."
-                ),
-            },
-            {"role": "user", "content": prompt},
-        ],
-        "stream": True,
     }
 
     _transport = httpx.AsyncHTTPTransport(
@@ -397,29 +390,62 @@ async def _ai_stream(model: str, prompt: str, provider: str = "groq") -> AsyncGe
     _timeout = httpx.Timeout(connect=30.0, read=None, write=None, pool=None)
     try:
         async with httpx.AsyncClient(transport=_transport, timeout=_timeout) as client:
-            async with client.stream(
-                "POST",
-                f"{_base_url}/chat/completions",
-                headers=headers,
-                json=payload,
-            ) as resp:
-                async for line in resp.aiter_lines():
-                    if not line or not line.startswith("data: "):
-                        continue
-                    raw = line[len("data: "):]
-                    if raw.strip() == "[DONE]":
-                        break
-                    try:
-                        data = json.loads(raw)
-                    except json.JSONDecodeError:
-                        continue
-                    chunk = (
-                        data.get("choices", [{}])[0]
-                        .get("delta", {})
-                        .get("content", "")
-                    )
-                    if chunk:
-                        yield chunk
+            for try_model in models_to_try:
+                payload = {
+                    "model": try_model,
+                    "messages": [
+                        {
+                            "role": "system",
+                            "content": (
+                                "You are a general-purpose research assistant. "
+                                "You answer questions on ANY topic — sports, history, science, "
+                                "entertainment, politics, people, culture, and more. "
+                                "Never refuse a question because it is not about programming. "
+                                "NEVER ask the user clarifying questions — always write the requested summary or analysis directly using the provided search results. "
+                                "If search results are provided, use them. Write the answer immediately."
+                            ),
+                        },
+                        {"role": "user", "content": prompt},
+                    ],
+                    "stream": True,
+                }
+                async with client.stream(
+                    "POST",
+                    f"{_base_url}/chat/completions",
+                    headers=headers,
+                    json=payload,
+                ) as resp:
+                    if resp.status_code == 429:
+                        await resp.aread()
+                        continue  # rate limited — try next model in fallback chain
+                    if resp.status_code != 200:
+                        body = await resp.aread()
+                        try:
+                            err = json.loads(body)
+                            msg = err.get("error", {}).get("message", str(resp.status_code))
+                        except Exception:
+                            msg = str(resp.status_code)
+                        yield f"*AI API Error: {msg}*"
+                        return
+                    async for line in resp.aiter_lines():
+                        if not line or not line.startswith("data: "):
+                            continue
+                        raw = line[len("data: "):]
+                        if raw.strip() == "[DONE]":
+                            break
+                        try:
+                            data = json.loads(raw)
+                        except json.JSONDecodeError:
+                            continue
+                        chunk = (
+                            data.get("choices", [{}])[0]
+                            .get("delta", {})
+                            .get("content", "")
+                        )
+                        if chunk:
+                            yield chunk
+                    return  # successfully streamed
+            yield "*Rate limit reached on all available models. Please try again in a moment.*"
     except httpx.ConnectError:
         yield f"\n\n*Error: Could not connect to AI endpoint at {_base_url}.*"
     except (httpx.ReadTimeout, httpx.WriteTimeout, httpx.PoolTimeout):
@@ -1101,11 +1127,18 @@ async def get_live_feed(category: str):
                       + _IMP_BONUS.get(x.get("importance", ""), 0),
         reverse=True
     )
-    for item in combined:
-        item.pop("_score", None)
+    sliced = combined[:100]
+    for item in sliced:
+        item["score"] = round(item.pop("_score", 0.0), 4)
         item.pop("_pub_ts", None)
 
-    return JSONResponse(combined[:100])
+    return JSONResponse({
+        "items": sliced,
+        "from_cache": len(db_items),
+        "from_rss": len(fresh),
+        "category": category,
+        "total": len(combined),
+    })
 
 
 @app.get("/live/{category}/cached")
@@ -1178,8 +1211,14 @@ async def get_live_feed_cached(category: str):
         reverse=True,
     )
     for item in result:
-        item.pop("_score", None)
-    return JSONResponse(result)
+        item["score"] = round(item.pop("_score", 0.0), 4)
+    return JSONResponse({
+        "items": result,
+        "from_cache": len(result),
+        "from_rss": 0,
+        "category": category,
+        "total": len(result),
+    })
 
 
 class ArticleSummarizeRequest(BaseModel):
