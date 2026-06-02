@@ -14,6 +14,8 @@ interface TTSState {
 interface TTSContextValue {
   isSpeaking: boolean
   label: string
+  isMuted: boolean
+  toggleMute: () => void
   voices: SpeechSynthesisVoice[]
   selectedVoice: string
   setSelectedVoice: (v: string) => void
@@ -27,6 +29,7 @@ export function TTSProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<TTSState>({ isSpeaking: false, label: '' })
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([])
   const [selectedVoice, setSelectedVoice] = useState('')
+  const [isMuted, setIsMuted] = useState(false)
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null)
 
   // Load voices (may arrive async)
@@ -40,8 +43,26 @@ export function TTSProvider({ children }: { children: React.ReactNode }) {
     return () => window.speechSynthesis?.removeEventListener('voiceschanged', load)
   }, [])
 
+  const toggleMute = useCallback(() => {
+    setIsMuted((prev) => {
+      if (!prev) {
+        // Turning mute ON — stop any current speech
+        if (window.speechSynthesis) {
+          window.speechSynthesis.pause()
+          window.speechSynthesis.cancel()
+        }
+        utteranceRef.current = null
+        setState({ isSpeaking: false, label: '' })
+      }
+      return !prev
+    })
+  }, [])
+
   const stop = useCallback(() => {
-    window.speechSynthesis?.cancel()
+    if (window.speechSynthesis) {
+      window.speechSynthesis.pause()   // Chrome bug: cancel() alone may not stop mid-speech
+      window.speechSynthesis.cancel()
+    }
     utteranceRef.current = null
     setState({ isSpeaking: false, label: '' })
   }, [])
@@ -59,6 +80,7 @@ export function TTSProvider({ children }: { children: React.ReactNode }) {
   const speak = useCallback(
     (text: string, label: string) => {
       if (!window.speechSynthesis) return
+      if (isMuted) return
       stop()
 
       const clean = cleanText(text)
@@ -88,12 +110,12 @@ export function TTSProvider({ children }: { children: React.ReactNode }) {
       setState({ isSpeaking: true, label })
       setTimeout(() => { if (utteranceRef.current === utt) window.speechSynthesis.speak(utt) }, 100)
     },
-    [stop, voices, selectedVoice],
+    [stop, voices, selectedVoice, isMuted],
   )
 
   return (
     <TTSContext.Provider
-      value={{ isSpeaking: state.isSpeaking, label: state.label, voices, selectedVoice, setSelectedVoice, speak, stop }}
+      value={{ isSpeaking: state.isSpeaking, label: state.label, isMuted, toggleMute, voices, selectedVoice, setSelectedVoice, speak, stop }}
     >
       {children}
     </TTSContext.Provider>

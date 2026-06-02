@@ -21,7 +21,7 @@ function qualityRank(v: SpeechSynthesisVoice): number {
 
 export function Header({ className }: HeaderProps) {
   const { providers } = useProviders()
-  const { voices, selectedVoice, setSelectedVoice } = useTTS()
+  const { voices, selectedVoice, setSelectedVoice, isMuted, toggleMute } = useTTS()
   const [provider, setProvider] = useState('groq')
   const [model, setModel] = useState('llama-3.3-70b-versatile')
   const [theme, setTheme] = useState('dark')
@@ -105,6 +105,15 @@ export function Header({ className }: HeaderProps) {
           <option value="light">⬜ Light</option>
           <option value="grey">🔘 Grey</option>
         </select>
+
+        <button
+          className={`app-mute-btn${isMuted ? ' muted' : ''}`}
+          onClick={toggleMute}
+          aria-label={isMuted ? 'Unmute sound' : 'Mute sound'}
+          title={isMuted ? 'Sound off — click to unmute' : 'Mute all sound'}
+        >
+          {isMuted ? '🔇' : '🔊'}
+        </button>
       </div>
     </header>
   )
