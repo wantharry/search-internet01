@@ -32,7 +32,7 @@ export function SearchCard({
   const [fetchContent, setFetchContent] = useState(true)
   const [timelimit, setTimelimit] = useState('')
   const [isListening, setIsListening] = useState(false)
-  const recognitionRef = useRef<SpeechRecognition | null>(null)
+  const recognitionRef = useRef<any>(null)
 
   const handleSearch = () => {
     if (!query.trim() || isSearching) return
@@ -52,8 +52,7 @@ export function SearchCard({
 
   const toggleMic = () => {
     const SpeechRecognition =
-      (window as typeof window & { SpeechRecognition?: typeof SpeechRecognition; webkitSpeechRecognition?: typeof SpeechRecognition }).SpeechRecognition ??
-      (window as typeof window & { webkitSpeechRecognition?: typeof SpeechRecognition }).webkitSpeechRecognition
+      (window as any).SpeechRecognition ?? (window as any).webkitSpeechRecognition
 
     if (!SpeechRecognition) return
 
@@ -67,9 +66,9 @@ export function SearchCard({
     rec.continuous = false
     rec.interimResults = true
     rec.lang = 'en-US'
-    rec.onresult = (e) => {
-      const transcript = Array.from(e.results)
-        .map((r) => r[0].transcript)
+    rec.onresult = (e: any) => {
+      const transcript = Array.from(e.results as any[])
+        .map((r: any) => r[0].transcript)
         .join('')
       setQuery(transcript)
       if (e.results[e.results.length - 1].isFinal) {
