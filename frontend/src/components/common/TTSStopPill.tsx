@@ -26,7 +26,7 @@ export function TTSStopPill() {
           <span key={i} />
         ))}
       </div>
-      <span>Reading: {displayLabel}</span>
+      <span className="pill-text">Reading: {displayLabel}</span>
       <button
         className="pill-stop-btn"
         onClick={stop}

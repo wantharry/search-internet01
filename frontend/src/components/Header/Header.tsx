@@ -58,23 +58,20 @@ export function Header({ className }: HeaderProps) {
         </select>
 
         {englishVoices.length > 0 && (
-          <>
-            <label htmlFor="voice-select" className="header-label">Voice:</label>
-            <select
-              id="voice-select"
-              className="app-select"
-              value={selectedVoice}
-              onChange={(e) => setSelectedVoice(e.target.value)}
-              aria-label="TTS voice"
-            >
-              <option value="">🔊 Auto (best)</option>
-              {englishVoices.map((v) => (
-                <option key={v.name} value={v.name}>
-                  {voiceLabel(v)}
-                </option>
-              ))}
-            </select>
-          </>
+          <select
+            id="voice-select"
+            className="app-select"
+            value={selectedVoice}
+            onChange={(e) => setSelectedVoice(e.target.value)}
+            aria-label="TTS voice"
+          >
+            <option value="">🔊 Voice</option>
+            {englishVoices.map((v) => (
+              <option key={v.name} value={v.name}>
+                {voiceLabel(v)}
+              </option>
+            ))}
+          </select>
         )}
 
         <select

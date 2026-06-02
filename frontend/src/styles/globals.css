@@ -964,6 +964,7 @@ input[type="checkbox"] { accent-color: var(--primary); width: 15px; height: 15px
   bottom: 70px;
   left: 50%;
   transform: translateX(-50%);
+  max-width: calc(100vw - 32px);
   background: rgba(12,14,22,0.97);
   color: #e2e8f0;
   border: 1px solid rgba(249,115,22,.42);
@@ -1046,10 +1047,29 @@ input[type="checkbox"] { accent-color: var(--primary); width: 15px; height: 15px
 
 /* ─── Mobile ──────────────────────────────────────────────────────────── */
 @media (max-width: 640px) {
-  .app-header { padding: 10px 14px; gap: 6px; }
+  /* Header: wrap controls onto a second row below the title */
+  .app-header {
+    padding: 10px 14px 8px;
+    gap: 4px;
+    flex-wrap: wrap;
+  }
   .app-title { font-size: 16px; }
   .app-badge, .app-free-badge { font-size: 9px; padding: 1px 6px; }
-  .app-header-right { gap: 6px; }
+  /* Controls row — full width, three selects side by side */
+  .app-header-right {
+    flex: 1 1 100%;
+    margin-left: 0;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 6px;
+  }
+  /* Selects fill their grid cell */
+  .app-header-right .app-select {
+    width: 100%;
+    font-size: 11px;
+    padding: 5px 22px 5px 7px;
+    min-width: 0;
+  }
   .app-main { padding: 10px 10px 80px; }
 
   /* Nav tabs */
@@ -1065,12 +1085,20 @@ input[type="checkbox"] { accent-color: var(--primary); width: 15px; height: 15px
   .settings-grid { grid-template-columns: 1fr; }
   .toggle-row { grid-column: span 1; flex-direction: column; align-items: stretch; gap: 8px; }
 
-  /* Live controls — already scrollable, remove edge mask on small screens */
+  /* Live controls — wrap to 2 rows, no sideways scroll on mobile */
   .live-controls, .alerts-toolbar {
-    mask-image: linear-gradient(to right, transparent 0, #000 8px, #000 calc(100% - 8px), transparent 100%);
-    -webkit-mask-image: linear-gradient(to right, transparent 0, #000 8px, #000 calc(100% - 8px), transparent 100%);
+    flex-wrap: wrap;
+    overflow-x: visible;
+    mask-image: none;
+    -webkit-mask-image: none;
     gap: 6px;
     padding: 4px 0 8px;
+  }
+  .live-controls .live-sel,
+  .alerts-toolbar .live-sel {
+    flex: 1 1 calc(50% - 6px);
+    min-width: 0;
+    font-size: 12px;
   }
 
   /* Cards */
@@ -1084,8 +1112,20 @@ input[type="checkbox"] { accent-color: var(--primary); width: 15px; height: 15px
   /* Floating refresh */
   .live-float-refresh { bottom: 14px; right: 14px; padding: 11px 20px; font-size: 13px; }
 
-  /* TTS pill */
-  .tts-stop-pill { font-size: 12px; padding: 7px 14px; gap: 8px; }
+  /* TTS pill — clamp to screen width so it never bleeds off */
+  .tts-stop-pill {
+    max-width: calc(100vw - 32px);
+    font-size: 12px;
+    padding: 7px 14px;
+    gap: 8px;
+  }
+  .tts-stop-pill .pill-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+    flex: 1;
+  }
 }
 
 /* ─── Light Theme ────────────────────────────────────────────────────── */
