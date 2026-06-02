@@ -1744,6 +1744,40 @@
   }
   @keyframes toastIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:none; } }
 
+
+  /* ── Global TTS Now-Playing pill ───────────────────────── */
+  #tts-stop-pill {
+    position: fixed; bottom: 70px; left: 50%;
+    transform: translateX(-50%);
+    background: rgba(12,14,22,0.97); color: #e2e8f0;
+    border: 1px solid rgba(249,115,22,.42);
+    border-radius: 999px; padding: 8px 16px;
+    font-size: 13px; display: none; z-index: 9997;
+    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    box-shadow: 0 4px 28px rgba(249,115,22,.22);
+    white-space: nowrap; align-items: center; gap: 10px;
+    user-select: none; font-family: var(--font-body, sans-serif);
+    font-weight: 600; letter-spacing: .01em;
+  }
+  #tts-stop-pill.visible { display: flex; }
+  .pill-stop-btn {
+    background: rgba(249,115,22,.18); border: 1px solid rgba(249,115,22,.46);
+    border-radius: 16px; color: #fb923c; cursor: pointer;
+    font-size: 12px; font-weight: 700; padding: 3px 12px;
+    transition: background .15s; white-space: nowrap;
+  }
+  .pill-stop-btn:hover { background: rgba(249,115,22,.4); color: #fff; }
+  .pill-tts-wave { display: flex; align-items: center; gap: 2px; height: 16px; flex-shrink: 0; }
+  .pill-tts-wave span {
+    display: inline-block; width: 3px; border-radius: 2px;
+    background: #f97316; animation: tts-bar 1s ease-in-out infinite;
+  }
+  .pill-tts-wave span:nth-child(1){height:6px;animation-delay:0s}
+  .pill-tts-wave span:nth-child(2){height:10px;animation-delay:.12s}
+  .pill-tts-wave span:nth-child(3){height:14px;animation-delay:.24s}
+  .pill-tts-wave span:nth-child(4){height:8px;animation-delay:.36s}
+  .pill-tts-wave span:nth-child(5){height:12px;animation-delay:.48s}
+  @keyframes tts-bar { 0%,100%{height:4px;opacity:.45} 50%{height:14px;opacity:1} }
 </style>
 </head>
 <body>
@@ -2480,15 +2514,29 @@
     if (!window.speechSynthesis) return;
     const sel = document.getElementById('tts-voice-select');
     if (!sel) return;
-    const voices = speechSynthesis.getVoices().filter(v => v.lang.startsWith('en'));
-    if (!voices.length) return;
-    const opts = voices.map((v, i) =>
-      `<option value="${i}">${v.name.replace('Google ','').replace('Microsoft ','').replace(' Online (Natural)','')}</option>`
-    ).join('');
+    const rawVoices = speechSynthesis.getVoices().filter(v => v.lang.startsWith('en'));
+    if (!rawVoices.length) return;
+    const rankV = v => {
+      const n = v.name;
+      if (n.includes('Natural') || n.includes('neural') || n.includes('Online (Natural)')) return 0;
+      if (n.startsWith('Google') && v.lang === 'en-US') return 1;
+      if (n.startsWith('Microsoft') && n.includes('Online')) return 2;
+      if (n.startsWith('Google')) return 3;
+      return 5;
+    };
+    const voices = [...rawVoices].sort((a, b) => rankV(a) - rankV(b));
+    const opts = voices.map((v, i) => {
+      const isNatural = v.name.includes('Natural') || v.name.includes('neural');
+      const label = v.name
+        .replace(' Online (Natural)', isNatural ? ' ✶' : '')
+        .replace('Google ', '').replace('Microsoft ', '').replace(' Desktop', '');
+      return `<option value="${i}">${label}</option>`;
+    }).join('');
     sel.innerHTML = opts;
     sel.classList.add('active');
+    sel._sortedVoices = voices;
     const dsel = document.getElementById('digest-tts-voice');
-    if (dsel) dsel.innerHTML = '<option value="">Default</option>' + opts;
+    if (dsel) dsel.innerHTML = '<option value="">Best available</option>' + opts;
   }
 
   function speakArticle(idx, title, snippet) {
@@ -2501,45 +2549,38 @@
       if (btn) { btn.textContent = '🔊'; btn.classList.remove('speaking'); }
       return;
     }
-    // Stop previous
-    speechSynthesis.cancel();
-    if (_ttsActiveIdx >= 0) {
-      const old = document.getElementById('tts-' + _ttsActiveIdx);
-      if (old) { old.textContent = '🔊'; old.classList.remove('speaking'); }
-    }
+    stopAllTts();
     _ttsActiveIdx = idx;
     if (btn) { btn.textContent = '⏹'; btn.classList.add('speaking'); }
 
-    const utt = new SpeechSynthesisUtterance(title + '. ' + (snippet || ''));
-    utt.rate = 0.93;
-    utt.pitch = 1;
-    const sel = document.getElementById('tts-voice-select');
-    if (sel && sel.value !== '') {
-      const voices = speechSynthesis.getVoices().filter(v => v.lang.startsWith('en'));
-      if (voices[parseInt(sel.value)]) utt.voice = voices[parseInt(sel.value)];
-    }
+    const clean = _cleanForTts(title + '. ' + (snippet || ''));
+    const utt = new SpeechSynthesisUtterance(clean);
+    utt.rate = 0.88;
+    utt.pitch = 1.0;
+    _applyVoiceFromSel(utt);
     utt.onend = utt.onerror = () => {
       _ttsActiveIdx = -1;
       if (btn) { btn.textContent = '🔊'; btn.classList.remove('speaking'); }
+      hideTtsStopPill();
     };
+    const shortTitle = title.length > 45 ? title.slice(0, 42) + '…' : title;
+    showTtsStopPill(shortTitle);
     speechSynthesis.speak(utt);
   }
 
   // Shared TTS helper used by all Summarize buttons
   function speakSummaryText(text, btn, idleLabel, keepEnabled) {
     if (!window.speechSynthesis) return;
-    speechSynthesis.cancel();
+    stopAllTts();
     if (btn) { btn.textContent = '🔊 Reading…'; btn.disabled = false; }
-    const utt = new SpeechSynthesisUtterance(text);
-    utt.rate = 0.93; utt.pitch = 1;
-    const sel = document.getElementById('tts-voice-select');
-    if (sel && sel.value !== '') {
-      const voices = speechSynthesis.getVoices().filter(v => v.lang.startsWith('en'));
-      if (voices[parseInt(sel.value)]) utt.voice = voices[parseInt(sel.value)];
-    }
+    const clean = _cleanForTts(text);
+    const utt = new SpeechSynthesisUtterance(clean);
+    utt.rate = 0.88; utt.pitch = 1.0;
+    _applyVoiceFromSel(utt);
     utt.onend = utt.onerror = () => {
       if (btn) { btn.textContent = idleLabel || '✅ Done'; btn.disabled = !keepEnabled; }
     };
+    showTtsStopPill('AI Summary');
     speechSynthesis.speak(utt);
   }
 
@@ -2597,6 +2638,18 @@
       speechSynthesis.onvoiceschanged = _initTtsVoices;
       _initTtsVoices();
     }
+
+    // Inject the TTS Now-Playing pill
+    (function() {
+      const pill = document.createElement('div');
+      pill.id = 'tts-stop-pill';
+      pill.innerHTML =
+        '<div class="pill-tts-wave"><span></span><span></span>' +
+        '<span></span><span></span><span></span></div>' +
+        '<span id="tts-stop-label">Audio playing</span>' +
+        '<button class="pill-stop-btn" onclick="stopAllTts()">&#9632; Stop</button>';
+      document.body.appendChild(pill);
+    })();
 
     // Inject the pause pill
     const _pill = document.createElement('div');
@@ -3753,6 +3806,71 @@
 
 
 
+
+  // ── TTS helpers: natural voices + clean text ──────────────────────────────
+  function _cleanForTts(text) {
+    return (text || '')
+      .replace(/https?:\/\/[^\s]+/g, '')
+      .replace(/#{1,6}\s+/g, '')
+      .replace(/\*\*([^*]+)\*\*/g, '$1')
+      .replace(/\*([^*]+)\*/g, '$1')
+      .replace(/`[^`]*`/g, '')
+      .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
+      .replace(/[*_~>#|\\]+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  function _pickBestVoice() {
+    if (!window.speechSynthesis) return null;
+    const voices = speechSynthesis.getVoices().filter(v => v.lang.startsWith('en'));
+    if (!voices.length) return null;
+    const rank = v => {
+      const n = v.name;
+      if (n.includes('Natural') || n.includes('neural') || n.includes('Online (Natural)')) return 0;
+      if (n.startsWith('Google') && v.lang === 'en-US') return 1;
+      if (n.startsWith('Microsoft') && n.includes('Online')) return 2;
+      if (n.startsWith('Google')) return 3;
+      return 5;
+    };
+    return [...voices].sort((a, b) => rank(a) - rank(b))[0];
+  }
+
+  function _applyVoiceFromSel(utt) {
+    const sel = document.getElementById('tts-voice-select');
+    if (sel && sel._sortedVoices && sel.value !== '') {
+      const v = sel._sortedVoices[parseInt(sel.value)];
+      if (v) { utt.voice = v; return; }
+    }
+    const best = _pickBestVoice();
+    if (best) utt.voice = best;
+  }
+
+  function showTtsStopPill(label) {
+    const lbl = document.getElementById('tts-stop-label');
+    if (lbl) lbl.textContent = label || 'Audio playing';
+    const pill = document.getElementById('tts-stop-pill');
+    if (pill) pill.classList.add('visible');
+  }
+
+  function hideTtsStopPill() {
+    const pill = document.getElementById('tts-stop-pill');
+    if (pill) pill.classList.remove('visible');
+  }
+
+  function stopAllTts() {
+    if (window.speechSynthesis) window.speechSynthesis.cancel();
+    if (typeof _ttsActiveIdx !== 'undefined' && _ttsActiveIdx >= 0) {
+      const b = document.getElementById('tts-' + _ttsActiveIdx);
+      if (b) { b.textContent = '\ud83d\udd0a'; b.classList.remove('speaking'); }
+      _ttsActiveIdx = -1;
+    }
+    if (typeof isSpeaking !== 'undefined') isSpeaking = false;
+    const raBtn = document.getElementById('read-aloud-btn');
+    if (raBtn) { raBtn.classList.remove('speaking'); raBtn.innerHTML = '\ud83d\udd0a Read aloud'; }
+    hideTtsStopPill();
+  }
+
   // ═══════════════════════════════════════════════
   //  VOICE SEARCH + TEXT-TO-SPEECH
   // ═══════════════════════════════════════════════
@@ -3812,37 +3930,24 @@
 
   // Text-to-speech: read the active summary tab aloud
   function toggleReadAloud() {
-    if (isSpeaking) {
-      window.speechSynthesis.cancel();
-      isSpeaking = false;
-      document.getElementById('read-aloud-btn').classList.remove('speaking');
-      document.getElementById('read-aloud-btn').innerHTML = '🔊 Read aloud';
-      return;
-    }
+    if (isSpeaking) { stopAllTts(); return; }
     const content = summaryState[activeTab]?.raw;
     if (!content) return;
-    // Strip markdown syntax for clean speech
-    const plain = content
-      .replace(/#{1,6}\s*/g, '')
-      .replace(/\*\*(.*?)\*\*/g, '$1')
-      .replace(/\*(.*?)\*/g, '$1')
-      .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
-      .replace(/`[^`]+`/g, '')
-      .replace(/^[-*]\s+/gm, '')
-      .replace(/\n{2,}/g, '. ')
-      .trim();
-
+    const plain = _cleanForTts(content);
     ttsUtterance = new SpeechSynthesisUtterance(plain);
-    ttsUtterance.rate = 0.95;
-    ttsUtterance.pitch = 1;
-    ttsUtterance.onend = () => {
+    ttsUtterance.rate = 0.88;
+    ttsUtterance.pitch = 1.0;
+    _applyVoiceFromSel(ttsUtterance);
+    ttsUtterance.onend = ttsUtterance.onerror = () => {
       isSpeaking = false;
-      document.getElementById('read-aloud-btn').classList.remove('speaking');
-      document.getElementById('read-aloud-btn').innerHTML = '🔊 Read aloud';
+      const ra = document.getElementById('read-aloud-btn');
+      if (ra) { ra.classList.remove('speaking'); ra.innerHTML = '🔊 Read aloud'; }
+      hideTtsStopPill();
     };
     isSpeaking = true;
     document.getElementById('read-aloud-btn').classList.add('speaking');
     document.getElementById('read-aloud-btn').innerHTML = '⏹ Stop';
+    showTtsStopPill('AI Summary');
     window.speechSynthesis.speak(ttsUtterance);
   }
 

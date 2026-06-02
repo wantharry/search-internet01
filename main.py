@@ -950,7 +950,7 @@ async def get_live_feed(category: str):
     feeds = LIVE_FEEDS.get(key, [])
     if not feeds and "-" in key:
         topic, region = key.split("-", 1)
-        feeds = LIVE_FEEDS.get(region, []) or LIVE_FEEDS.get(topic, [])
+        feeds = LIVE_FEEDS.get(topic, []) or LIVE_FEEDS.get(region, [])
     if not feeds:
         return JSONResponse({"error": "Unknown category"}, status_code=404)
 
