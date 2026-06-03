@@ -48,7 +48,8 @@ def _init_db() -> None:
                 source    TEXT DEFAULT '',
                 topic     TEXT DEFAULT '',
                 published REAL DEFAULT 0,
-                fetched_at REAL DEFAULT 0
+                fetched_at REAL DEFAULT 0,
+                region     TEXT DEFAULT ''
             );
             CREATE VIRTUAL TABLE IF NOT EXISTS articles_fts USING fts5(
                 title, snippet, source, topic,
@@ -63,6 +64,11 @@ def _init_db() -> None:
                 VALUES ('delete',old.rowid,old.title,old.snippet,old.source,old.topic);
             END;
         """)
+        # Migrate existing DBs: add region column if absent
+        try:
+            con.execute("ALTER TABLE articles ADD COLUMN region TEXT DEFAULT ''")
+        except Exception:
+            pass  # column already exists
         con.commit()
 
 
@@ -78,8 +84,8 @@ def _store_articles(items: list[dict]) -> None:
                     continue
                 con.execute(
                     "INSERT OR IGNORE INTO articles"
-                    " (url,title,snippet,source,topic,published,fetched_at)"
-                    " VALUES (?,?,?,?,?,?,?)",
+                    " (url,title,snippet,source,topic,published,fetched_at,region)"
+                    " VALUES (?,?,?,?,?,?,?,?)",
                     (
                         url,
                         item.get("title", "")[:500],
@@ -88,6 +94,7 @@ def _store_articles(items: list[dict]) -> None:
                         item.get("topic", "")[:100],
                         item.get("_pub_ts", 0) or 0,
                         now,
+                        item.get("region", "")[:50],
                     ),
                 )
             con.execute("DELETE FROM articles WHERE fetched_at < ?", (cutoff,))
@@ -107,6 +114,7 @@ async def _bg_feed_refresh() -> None:
             now_ts = _time_mod.time()
             _lk = cat.split("-")[0] if "-" in cat else cat
             topic_label = _KEY_TOPIC_LABELS.get(_lk, "")
+            _region = cat.split("-", 1)[1] if "-" in cat else ""
             items: list[dict] = []
             async with httpx.AsyncClient(
                 timeout=10.0,
@@ -134,6 +142,7 @@ async def _bg_feed_refresh() -> None:
                                 "snippet": snip,
                                 "source": source,
                                 "topic": topic_label,
+                                "region": _region,
                                 "_pub_ts": pub_ts,
                             })
                     except Exception:
@@ -866,6 +875,141 @@ LIVE_FEEDS: dict[str, list[str]] = {
         "https://www.realtor.com/news/feed/",                # Realtor.com
         "https://biggerpockets.com/blog/feed",               # BiggerPockets
     ],
+
+    # ── Sports ────────────────────────────────────────────────────────────────
+    "sports-china": [
+        "https://www.scmp.com/rss/12/feed",
+        "https://www.sixthtone.com/rss.xml",
+        "https://www.chinadailyhk.com/rss/china_news.xml",
+    ],
+    # ── Tech ──────────────────────────────────────────────────────────────────
+    "tech-usa": [
+        "https://techcrunch.com/feed/",
+        "https://www.theverge.com/rss/index.xml",
+        "https://feeds.arstechnica.com/arstechnica/index",
+        "https://www.wired.com/feed/rss",
+        "https://www.cnet.com/rss/news/",
+    ],
+    "tech-mideast": [
+        "https://gulfnews.com/rss/technology",
+        "https://techcrunch.com/feed/",
+        "https://feeds.reuters.com/reuters/technologyNews",
+    ],
+    # ── Science ───────────────────────────────────────────────────────────────
+    "science-china": [
+        "https://www.scmp.com/rss/36/feed",
+        "https://www.sixthtone.com/rss.xml",
+        "https://www.nature.com/news.rss",
+    ],
+    "science-mideast": [
+        "https://www.aljazeera.com/xml/rss/all.xml",
+        "https://www.nature.com/news.rss",
+        "https://feeds.reuters.com/reuters/scienceNews",
+    ],
+    # ── Entertainment ─────────────────────────────────────────────────────────
+    "entertainment-usa": [
+        "https://variety.com/feed/",
+        "https://www.hollywoodreporter.com/feed/",
+        "https://deadline.com/feed/",
+        "https://ew.com/feed/",
+    ],
+    "entertainment-india": [
+        "https://timesofindia.indiatimes.com/rssfeeds/1081479906.cms",
+        "https://www.bollywoodhungama.com/rss/news.xml",
+        "https://www.pinkvilla.com/rss.xml",
+    ],
+    "entertainment-china": [
+        "https://www.scmp.com/rss/4/feed",
+        "https://www.sixthtone.com/rss.xml",
+    ],
+    "entertainment-europe": [
+        "http://feeds.bbci.co.uk/news/entertainment_and_arts/rss.xml",
+        "https://www.theguardian.com/film/rss",
+        "https://rss.dw.com/rdf/rss-en-all",
+    ],
+    "entertainment-mideast": [
+        "https://www.aljazeera.com/xml/rss/all.xml",
+        "https://www.arabnews.com/feed",
+    ],
+    # ── AI / ML ───────────────────────────────────────────────────────────────
+    "ai-usa": [
+        "https://techcrunch.com/category/artificial-intelligence/feed/",
+        "https://venturebeat.com/category/ai/feed/",
+        "https://www.technologyreview.com/feed/",
+        "https://aiweekly.co/issues.rss",
+    ],
+    "ai-india": [
+        "https://gadgets360.com/rss/news",
+        "https://www.digit.in/rss/news.xml",
+        "https://analyticsindiamag.com/feed/",
+    ],
+    "ai-china": [
+        "https://www.scmp.com/rss/36/feed",
+        "https://www.sixthtone.com/rss.xml",
+        "https://techcrunch.com/category/artificial-intelligence/feed/",
+    ],
+    "ai-europe": [
+        "https://techcrunch.com/category/artificial-intelligence/feed/",
+        "https://venturebeat.com/category/ai/feed/",
+        "https://rss.dw.com/rdf/rss-en-science",
+    ],
+    "ai-mideast": [
+        "https://techcrunch.com/category/artificial-intelligence/feed/",
+        "https://venturebeat.com/category/ai/feed/",
+        "https://feeds.reuters.com/reuters/technologyNews",
+    ],
+    # ── Gaming ────────────────────────────────────────────────────────────────
+    "gaming-usa": [
+        "https://www.polygon.com/rss/index.xml",
+        "https://feeds.feedburner.com/ign/games-all",
+        "https://www.pcgamer.com/rss/",
+        "https://kotaku.com/rss",
+    ],
+    "gaming-india": [
+        "https://gadgets360.com/rss/news",
+        "https://www.sportskeeda.com/esports/rss",
+    ],
+    "gaming-china": [
+        "https://www.scmp.com/rss/36/feed",
+        "https://www.sixthtone.com/rss.xml",
+    ],
+    "gaming-europe": [
+        "https://www.rockpapershotgun.com/feed/",
+        "https://www.pcgamer.com/rss/",
+        "https://www.eurogamer.net/feed/articles",
+    ],
+    "gaming-mideast": [
+        "https://www.polygon.com/rss/index.xml",
+        "https://feeds.feedburner.com/ign/games-all",
+    ],
+    # ── Real Estate ───────────────────────────────────────────────────────────
+    "realestate-usa": [
+        "https://rss.nytimes.com/services/xml/rss/nyt/RealEstate.xml",
+        "https://www.housingwire.com/feed/",
+        "https://www.realtor.com/news/feed/",
+        "https://biggerpockets.com/blog/feed",
+        "https://www.inman.com/feed/",
+    ],
+    "realestate-india": [
+        "https://housing.com/news/feed/",
+        "https://timesofindia.indiatimes.com/rssfeedstopstories.cms",
+        "https://economictimes.indiatimes.com/industry/services/property-/-cstruction/rssfeeds/25663235.cms",
+    ],
+    "realestate-china": [
+        "https://www.scmp.com/rss/92/feed",
+        "https://www.sixthtone.com/rss.xml",
+        "https://www.chinadailyhk.com/rss/china_news.xml",
+    ],
+    "realestate-europe": [
+        "https://www.theguardian.com/money/property/rss",
+        "https://rss.dw.com/rdf/rss-en-all",
+        "https://feeds.bbci.co.uk/news/business/rss.xml",
+    ],
+    "realestate-mideast": [
+        "https://gulfnews.com/rss/uae",
+        "https://feeds.reuters.com/reuters/MENATopNews",
+        "https://www.arabianbusiness.com/rss",
+    ],
 }
 
 
@@ -990,11 +1134,21 @@ async def get_live_feed(category: str):
         with sqlite3.connect(DB_PATH) as _con:
             _con.row_factory = sqlite3.Row
             if db_topic:
-                _rows = _con.execute(
-                    "SELECT url,title,snippet,source,topic,published,fetched_at"
-                    " FROM articles WHERE topic=? ORDER BY fetched_at DESC LIMIT 90",
-                    (db_topic,),
-                ).fetchall()
+                if "-" in key:
+                    # Regional query: include both region-tagged and global articles
+                    _region_db = key.split("-", 1)[1]
+                    _rows = _con.execute(
+                        "SELECT url,title,snippet,source,topic,published,fetched_at"
+                        " FROM articles WHERE topic=? AND (region=? OR region='')"
+                        " ORDER BY fetched_at DESC LIMIT 90",
+                        (db_topic, _region_db),
+                    ).fetchall()
+                else:
+                    _rows = _con.execute(
+                        "SELECT url,title,snippet,source,topic,published,fetched_at"
+                        " FROM articles WHERE topic=? ORDER BY fetched_at DESC LIMIT 90",
+                        (db_topic,),
+                    ).fetchall()
             else:
                 _rows = _con.execute(
                     "SELECT url,title,snippet,source,topic,published,fetched_at"
