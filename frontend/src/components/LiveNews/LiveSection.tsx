@@ -1,8 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useLiveNews } from '../../hooks/useLiveNews'
 import { LiveCard } from './LiveCard'
-import { ClusterCard } from './ClusterCard'
-import { clusterArticles } from '../../utils/clustering'
 
 const TOPICS = [
   { value: 'all', label: '📰 All News' },
@@ -73,8 +71,6 @@ export function LiveSection() {
     })
   }
 
-  const [clusteringOn, setClusteringOn] = useState(true)
-
   // Filter & sort
   let displayed = articles
   if (search.trim()) {
@@ -89,11 +85,6 @@ export function LiveSection() {
   if (sort === 'rated') {
     displayed = [...displayed].sort((a, b) => b.score - a.score)
   }
-
-  const clusters = useMemo(
-    () => clusteringOn ? clusterArticles(displayed) : displayed.map((a) => ({ articles: [a], sharedKeywords: [] })),
-    [displayed, clusteringOn],
-  )
 
   return (
     <section id="panel-live" role="tabpanel" aria-label="Live news">
@@ -141,15 +132,6 @@ export function LiveSection() {
               ? `${displayed.length} articles · ${lastRefresh.toLocaleTimeString()}`
               : ''}
         </span>
-
-        <button
-          className={`live-sel cluster-toggle${clusteringOn ? ' active' : ''}`}
-          onClick={() => setClusteringOn((v) => !v)}
-          title="Group related stories together"
-          style={{ cursor: 'pointer', fontWeight: 700 }}
-        >
-          {clusteringOn ? '🔗 Grouped' : '🔗 Group'}
-        </button>
       </div>
 
       {/* Headline search */}
@@ -182,25 +164,15 @@ export function LiveSection() {
         {!loading && !error && displayed.length === 0 && (
           <div className="live-loading">No articles found. Try a different filter.</div>
         )}
-        {clusters.map((cluster, i) =>
-          cluster.articles.length === 1 ? (
-            <LiveCard
-              key={cluster.articles[0].url}
-              article={cluster.articles[0]}
-              index={i}
-              model="llama-3.3-70b-versatile"
-              provider="groq"
-            />
-          ) : (
-            <ClusterCard
-              key={cluster.articles[0].url}
-              cluster={cluster}
-              baseIndex={i}
-              model="llama-3.3-70b-versatile"
-              provider="groq"
-            />
-          )
-        )}
+        {displayed.map((article, i) => (
+          <LiveCard
+            key={article.url}
+            article={article}
+            index={i}
+            model="llama-3.3-70b-versatile"
+            provider="groq"
+          />
+        ))}
       </div>
     </section>
   )
