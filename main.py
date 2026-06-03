@@ -862,6 +862,15 @@ LIVE_FEEDS: dict[str, list[str]] = {
         "https://venturebeat.com/category/ai/feed/",         # VentureBeat AI
         "https://aiweekly.co/issues.rss",                    # AI Weekly
         "https://feeds.feedburner.com/MachineLearningMastery", # ML Mastery
+        "https://www.technologyreview.com/feed/",  # MIT Technology Review AI
+        "https://www.artificialintelligence-news.com/feed/",  # AI News
+        "https://www.unite.ai/feed/",  # Unite.AI
+        "https://www.marktechpost.com/feed/",  # MarkTechPost
+        "https://spectrum.ieee.org/feeds/feed.rss",  # IEEE Spectrum
+        "https://bair.berkeley.edu/blog/feed.xml",  # Berkeley AI Research
+        "https://hai.stanford.edu/news/rss",  # Stanford HAI
+        "https://syncedreview.com/feed/",  # Synced Review
+        "https://towardsdatascience.com/feed",  # Towards Data Science
     ],
     "gaming": [
         "https://kotaku.com/rss",                            # Kotaku
@@ -937,26 +946,47 @@ LIVE_FEEDS: dict[str, list[str]] = {
         "https://venturebeat.com/category/ai/feed/",
         "https://www.technologyreview.com/feed/",
         "https://aiweekly.co/issues.rss",
+        "https://www.artificialintelligence-news.com/feed/",  # AI News
+        "https://www.unite.ai/feed/",  # Unite.AI
+        "https://www.marktechpost.com/feed/",  # MarkTechPost
+        "https://hai.stanford.edu/news/rss",  # Stanford HAI
+        "https://bair.berkeley.edu/blog/feed.xml",  # Berkeley AI Research
+        "https://spectrum.ieee.org/feeds/feed.rss",  # IEEE Spectrum
+        "https://syncedreview.com/feed/",  # Synced Review
     ],
     "ai-india": [
         "https://gadgets360.com/rss/news",
         "https://www.digit.in/rss/news.xml",
         "https://analyticsindiamag.com/feed/",
+        "https://economictimes.indiatimes.com/tech/rss/articlelist/13357270.cms",  # ET Tech AI
+        "https://www.artificialintelligence-news.com/feed/",  # AI News
+        "https://timesofindia.indiatimes.com/rssfeedstopstories.cms",  # Times of India
     ],
     "ai-china": [
         "https://www.scmp.com/rss/36/feed",
         "https://www.sixthtone.com/rss.xml",
         "https://techcrunch.com/category/artificial-intelligence/feed/",
+        "https://technode.com/feed/",  # TechNode China
+        "https://www.chinadailyhk.com/rss/china_news.xml",  # China Daily HK
+        "https://www.artificialintelligence-news.com/feed/",  # AI News
+        "https://syncedreview.com/feed/",  # Synced Review
     ],
     "ai-europe": [
         "https://techcrunch.com/category/artificial-intelligence/feed/",
         "https://venturebeat.com/category/ai/feed/",
         "https://rss.dw.com/rdf/rss-en-science",
+        "https://www.euractiv.com/section/digital/feed/",  # Euractiv Digital
+        "https://sifted.eu/feed",  # Sifted EU
+        "https://www.artificialintelligence-news.com/feed/",  # AI News
+        "https://spectrum.ieee.org/feeds/feed.rss",  # IEEE Spectrum
     ],
     "ai-mideast": [
         "https://techcrunch.com/category/artificial-intelligence/feed/",
         "https://venturebeat.com/category/ai/feed/",
         "https://feeds.reuters.com/reuters/technologyNews",
+        "https://www.arabnews.com/feed",  # Arab News
+        "https://gulfnews.com/rss",  # Gulf News
+        "https://www.artificialintelligence-news.com/feed/",  # AI News
     ],
     # ── Gaming ────────────────────────────────────────────────────────────────
     "gaming-usa": [
