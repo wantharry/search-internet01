@@ -1,13 +1,9 @@
 import { useCallback, useState } from 'react'
-import { marked } from 'marked'
 import { streamSearch } from '../../api/client'
 import { useTTS } from '../../contexts/TTSContext'
 import { CardActions } from '../common/CardActions'
+import { SummaryDisplay } from '../common/SummaryDisplay'
 import type { Article } from '../../types'
-
-function renderMarkdown(text: string): string {
-  return marked.parse(text, { async: false }) as string
-}
 
 interface LiveCardProps {
   article: Article
@@ -158,16 +154,7 @@ export function LiveCard({ article, index, model, provider }: LiveCardProps) {
 
       {showSummary && (
         <div className="live-ai-summary" data-testid="ai-summary">
-          {summarizing && !aiSummary && (
-            <span style={{ color: 'var(--muted)', fontSize: 13 }}>Summarizing…</span>
-          )}
-          {aiSummary && (
-            <div
-              className="summary-md"
-              // eslint-disable-next-line react/no-danger
-              dangerouslySetInnerHTML={{ __html: renderMarkdown(aiSummary) }}
-            />
-          )}
+          <SummaryDisplay html={aiSummary} loading={summarizing} />
         </div>
       )}
 

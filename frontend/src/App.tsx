@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { TTSProvider } from './contexts/TTSContext'
 import { BookmarksProvider, useBookmarksCtx } from './contexts/BookmarksContext'
+import { SummaryModeProvider } from './contexts/SummaryModeContext'
 import { Header } from './components/Header/Header'
 import { NavTabs } from './components/NavTabs/NavTabs'
 import { SearchSection } from './components/Search/SearchSection'
@@ -42,7 +43,9 @@ export default function App() {
   return (
     <TTSProvider>
       <BookmarksProvider>
-        <AppInner />
+        <SummaryModeProvider>
+          <AppInner />
+        </SummaryModeProvider>
       </BookmarksProvider>
     </TTSProvider>
   )
